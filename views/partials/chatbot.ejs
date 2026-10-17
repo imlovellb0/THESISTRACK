@@ -1,0 +1,36 @@
+<button class="chat-open" type="button" id="chatOpen" aria-expanded="false" aria-controls="chatBox">Ask AI</button>
+<section class="chat" id="chatBox" hidden aria-label="AI assistant">
+  <header><b>ThesisTrack assistant</b><button type="button" id="chatClose" class="linkbtn" aria-label="Close chat">Close</button></header>
+  <div class="chat-log" id="chatLog" aria-live="polite">
+    <div class="bubble bot">Hi! Ask me about thesis writing, chapter requirements, defense tips, or how to use ThesisTrack.</div>
+  </div>
+  <form id="chatForm" class="chat-form">
+    <input type="text" id="chatText" maxlength="1500" placeholder="Type your question" autocomplete="off" required>
+    <button class="btn primary sm" type="submit">Send</button>
+  </form>
+  <p class="small muted chat-note">AI can make mistakes. Do not share private data.</p>
+</section>
+<script>
+(function () {
+  var box = document.getElementById('chatBox'), log = document.getElementById('chatLog'), text = document.getElementById('chatText');
+  var open = document.getElementById('chatOpen'), history = [];
+  function toggle(show) { box.hidden = !show; open.setAttribute('aria-expanded', show); if (show) text.focus(); }
+  open.onclick = function () { toggle(box.hidden); };
+  document.getElementById('chatClose').onclick = function () { toggle(false); open.focus(); };
+  function add(cls, msg) { var d = document.createElement('div'); d.className = 'bubble ' + cls; d.textContent = msg; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+  document.getElementById('chatForm').onsubmit = function (e) {
+    e.preventDefault();
+    var msg = text.value.trim(); if (!msg) return;
+    text.value = ''; add('me', msg);
+    var wait = add('bot', 'Thinking...');
+    var body = new URLSearchParams({ _csrf: '<%= csrf %>', message: msg, history: JSON.stringify(history) });
+    fetch('/ai/chat', { method: 'POST', body: body })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { wait.textContent = d.error; return; }
+        wait.textContent = d.reply; history.push({ role: 'user', content: msg }, { role: 'assistant', content: d.reply }); history = history.slice(-10);
+      })
+      .catch(function () { wait.textContent = 'Could not reach the server. Try again.'; });
+  };
+})();
+</script>

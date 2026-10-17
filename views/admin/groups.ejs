@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Groups</h1><span class="muted small">Students create their own groups. You request advisers, record the defense panel and schedule defenses.</span></div>
+<section class="card">
+  <label class="field filterbar"><span>Search this list</span><input type="search" data-filter="#grouptable" placeholder="Type a name, email or role"></label>
+  <div class="tablewrap"><table id="grouptable">
+    <thead><tr><th>Group</th><th>Adviser</th><th>Progress</th><th>Defense</th><th>Health</th><th></th></tr></thead>
+    <tbody>
+    <% groups.forEach(g => { %>
+      <tr>
+        <td><b><%= g.name %></b><br><span class="small muted"><%= g.title %></span></td>
+        <td><%= g.adviser_name || '' %>
+          <% const rq = g.lastRequest; %>
+          <% if (rq && rq.status === 'Pending') { %><span class="pill info">Waiting for <%= rq.adviser_name %></span>
+          <% } else if (!g.adviser_name && rq && rq.status === 'Declined') { %><span class="pill bad"><%= rq.adviser_name %> declined</span><br><span class="small muted">Reason: <%= rq.reason %></span>
+          <% } else if (!g.adviser_name) { %><span class="pill warn">Not assigned</span><% } %></td>
+        <td><%- L.bar(g.approved) %></td>
+        <td><% if (g.defense_date) { %><%= L.fmtDate(g.defense_date) %>, <%= g.defense_time %><br><span class="small muted">Room <%= g.room %></span><% } else { %><span class="muted">Not scheduled</span><% } %></td>
+        <td><%- L.hpill(g.health) %></td>
+        <td><a class="btn sm" href="/admin/groups/<%= g.id %>">Manage</a></td>
+      </tr>
+    <% }) %>
+    <% if (!groups.length) { %><tr><td colspan="6" class="muted">No groups yet. Students create them after they sign up.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+<script src="/static/filter.js"></script>
+<%- include('../partials/footer') %>

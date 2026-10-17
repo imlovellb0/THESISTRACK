@@ -1,0 +1,76 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+    <h1>Create a student account</h1>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/register" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Join code <span class="hint">(from your thesis coordinator)</span></span><input type="text" name="join_code" value="<%= form.join_code || '' %>" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="K7M2QX9P" required></label>
+      <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" autocomplete="name" required></label>
+      <label class="field"><span>Student ID number</span><input type="text" name="student_no" value="<%= form.student_no || '' %>" maxlength="30" placeholder="2024-0001" required></label>
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" autocomplete="username" required></label>
+
+      <div class="field" id="idcapture">
+        <span>Photo of your student ID <span class="hint">(the front, with your name and photo readable)</span></span>
+        <video id="idvideo" class="idcam" autoplay playsinline muted hidden></video>
+        <img id="idpreview" class="idcam" alt="Preview of your ID photo" hidden>
+        <canvas id="idcanvas" hidden></canvas>
+        <div class="row">
+          <button class="btn sm" type="button" id="idopen" hidden>Use camera</button>
+          <button class="btn sm primary" type="button" id="idsnap" hidden>Take photo</button>
+          <button class="btn sm" type="button" id="idretake" hidden>Retake</button>
+        </div>
+        <input type="file" name="id_photo" id="idfile" accept="image/jpeg,image/png,image/webp" capture="environment" required>
+        <p class="small muted" id="idnote">On a phone, choosing a photo opens the camera. JPG, PNG or WEBP, up to 5 MB. Only the coordinator can see it.</p>
+      </div>
+
+      <label class="field"><span>Password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="field"><span>Confirm password</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+      <label class="check"><input type="checkbox" name="consent" required> <span>I have read the <a href="/privacy" target="_blank" rel="noopener">Privacy Notice</a> and agree that ThesisTrack may keep my name, email, student ID number and ID photo for thesis management.</span></label>
+      <button class="btn primary" type="submit">Create account</button>
+    </form>
+    <p class="small">Already registered? <a href="/login">Sign in</a>.</p>
+  </section>
+</div>
+<script>
+(function () {
+  var file = document.getElementById('idfile'), video = document.getElementById('idvideo'),
+      preview = document.getElementById('idpreview'), canvas = document.getElementById('idcanvas'),
+      openBtn = document.getElementById('idopen'), snap = document.getElementById('idsnap'),
+      retake = document.getElementById('idretake'), note = document.getElementById('idnote');
+  var stream = null;
+
+  function stop() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } video.hidden = true; }
+  function show(blobOrFile) { preview.src = URL.createObjectURL(blobOrFile); preview.hidden = false; retake.hidden = false; }
+
+  file.addEventListener('change', function () { if (file.files[0]) { stop(); snap.hidden = true; show(file.files[0]); } });
+
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return; // keep the plain file picker
+  openBtn.hidden = false;
+
+  function openCamera() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then(function (s) {
+      stream = s; video.srcObject = s; video.hidden = false; preview.hidden = true; retake.hidden = true;
+      openBtn.hidden = true; snap.hidden = false;
+    }).catch(function () {
+      note.textContent = 'The camera is not available (it needs permission, and a secure page or localhost). Choose a photo from your device instead.';
+    });
+  }
+  openBtn.addEventListener('click', openCamera);
+  retake.addEventListener('click', function () { file.value = ''; preview.hidden = true; retake.hidden = true; openCamera(); });
+
+  snap.addEventListener('click', function () {
+    var w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return;
+    var scale = Math.min(1, 1600 / Math.max(w, h));
+    canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(function (blob) {
+      var f = new File([blob], 'student-id.jpg', { type: 'image/jpeg' });
+      var dt = new DataTransfer(); dt.items.add(f); file.files = dt.files;
+      stop(); snap.hidden = true; openBtn.hidden = false; show(f);
+    }, 'image/jpeg', 0.9);
+  });
+})();
+</script>
+<%- include('partials/footer') %>

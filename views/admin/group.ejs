@@ -1,0 +1,75 @@
+<%- include('../partials/header') %>
+<div>
+  <div class="crumbs"><a href="/admin/groups">Groups</a> / <%= g.name %></div>
+  <div class="pagehead"><h1><%= g.title %></h1><%- L.hpill(g.health) %></div>
+  <p class="muted small"><%= members.map(m => m.name + (m.is_leader ? ' (leader)' : '')).join(', ') %></p>
+</div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<section class="card">
+  <form class="stack" method="post" action="/admin/groups/<%= g.id %>">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Adviser <span class="hint">(the adviser must accept the request first)</span></span>
+      <select name="adviser_id">
+        <option value="">Not assigned</option>
+        <% const shown = pending ? pending.adviser_id : g.adviser_id; %>
+        <% advisers.forEach(a => { %><option value="<%= a.id %>" <%= a.id === shown ? 'selected' : '' %>><%= a.name %> · <%= a.load_count %> group<%= a.load_count === 1 ? '' : 's' %><%= a.waiting ? ', ' + a.waiting + ' waiting' : '' %><%= declined.includes(a.id) ? ' · declined this group' : '' %></option><% }) %>
+      </select></label>
+    <% const last = requests[0]; %>
+    <% if (!pending && !g.adviser_id && last && last.status === 'Declined') { %>
+      <div class="flash error"><b><%= last.adviser_name %> declined this group.</b> Reason: <%= last.reason %><br>Choose another adviser above and save.</div>
+    <% } %>
+    <% if (pending) { %><p class="small"><span class="pill info">Waiting</span> <%= requests.find(r => r.id === pending.id).adviser_name %> has not answered yet.<% if (g.adviser_id) { %> Until then the current adviser stays.<% } %></p><% } %>
+
+    <div class="field"><span>Panel members <span class="hint">(choose at least two to schedule a defense)</span></span>
+      <div class="checks">
+        <% panelists.forEach(p => { %>
+          <label><input type="checkbox" name="panel" value="<%= p.id %>" <%= chosen.includes(p.id) ? 'checked' : '' %>> <%= p.name %><%= p.active ? '' : ' (inactive)' %></label>
+        <% }) %>
+        <% if (!panelists.length) { %><span class="muted small">No panel members yet.</span><% } %>
+        <a class="small" href="/admin/panel">Add or edit panel members</a>
+      </div></div>
+
+    <div class="fields">
+      <label class="field"><span>Defense date</span><input type="date" name="defense_date" value="<%= g.defense_date || '' %>"></label>
+      <label class="field"><span>Time</span>
+        <select name="defense_time">
+          <% L.SLOTS.forEach(s => { %><option <%= s === g.defense_time ? 'selected' : '' %>><%= s %></option><% }) %>
+        </select></label>
+      <label class="field"><span>Room</span><input type="text" name="room" value="<%= g.room || '' %>" maxlength="60" placeholder="IT-204"></label>
+    </div>
+    <p class="small muted">Leave the date empty to keep the defense unscheduled.</p>
+    <div class="row"><button class="btn primary" type="submit">Save</button><a class="btn" href="/admin/groups">Cancel</a></div>
+  </form>
+</section>
+
+<% if (requests.length) { %>
+<section class="card">
+  <header><h2>Adviser requests</h2></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Adviser</th><th>Status</th><th>Reason given</th><th>Asked</th></tr></thead>
+    <tbody>
+    <% requests.forEach(r => { %>
+      <tr><td><%= r.adviser_name %></td>
+        <td><span class="pill <%= r.status === 'Accepted' ? 'good' : r.status === 'Declined' ? 'bad' : r.status === 'Pending' ? 'info' : 'muted' %>"><%= r.status %></span></td>
+        <td><%= r.reason || '' %></td>
+        <td><%= L.fmtDateTime(r.created_at) %></td></tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<% } %>
+
+<section class="card">
+  <header><h2>Chapters</h2></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Chapter</th><th>Status</th><th>Deadline</th><th>Latest file</th></tr></thead>
+    <tbody>
+    <% g.chapters.forEach(c => { %>
+      <tr><td><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></td><td data-label="Status"><%- L.pill(c.status) %></td>
+        <td data-label="Deadline"><%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
+        <td data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> &middot; <a class="small" href="/ai/submission/<%= c.latest_id %>">AI check</a><% } else { %><span class="muted small">None</span><% } %></td></tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('../partials/footer') %>

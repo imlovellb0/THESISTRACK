@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+<section class="card prose">
+  <h1>Privacy Notice</h1>
+  <p class="small muted">ThesisTrack is a school thesis management system. This notice follows the principles of the Data Privacy Act of 2012 (RA 10173): transparency, legitimate purpose and proportionality.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><b>Account details:</b> your name, email address, role and a hashed password. We never store your password as plain text.</li>
+    <li><b>Students:</b> your student ID number and a photo of your student ID, used only to check that you are an enrolled student.</li>
+    <li><b>Thesis work:</b> the chapter files you upload, adviser comments, consultation requests and deadlines.</li>
+    <li><b>Activity records:</b> a log of important actions (for example, who submitted or approved a chapter) and the time they happened.</li>
+  </ul>
+
+  <h2>Why we collect it</h2>
+  <p>Only to run the thesis process of the school: submitting chapters, adviser review, scheduling consultations and defenses, and progress reports for the coordinator. We do not sell your data or use it for advertising.</p>
+
+  <h2>Who can see it</h2>
+  <ul>
+    <li><b>ID photo:</b> only the thesis coordinator and the student who owns it.</li>
+    <li><b>Chapter files and comments:</b> the members of that thesis group, their assigned adviser and the coordinator.</li>
+    <li><b>Messages:</b> a group thread is read by the group's students, their adviser and the coordinator. A private thread is read only by the person and the coordinator. The system administrator cannot read message text. The coordinator can hide a message.</li>
+    <li><b>Account list and activity log:</b> the coordinator.</li>
+  </ul>
+
+  <h2>AI features</h2>
+  <p>The similarity check runs on our own server and compares chapters only with other groups' uploads in this system. The grammar suggestions and the chatbot send the text you type or the part of the chapter you choose to a third-party AI service (for example Google Gemini on its free plan), or to a model on the school's own computer when the coordinator has set it up that way. Free AI plans may keep or use what is sent, so do not use these tools on anything that must stay private. AI answers can be wrong and are only suggestions.</p>
+
+  <h2>How long we keep it</h2>
+  <p>Records are kept while the thesis requirement is ongoing and as long as the school needs them for its academic records. The coordinator can deactivate an account at any time. You may ask the coordinator to correct or delete your personal data, except where the school must keep it by regulation.</p>
+
+  <h2>How we protect it</h2>
+  <ul>
+    <li>Passwords are hashed, sessions expire, and repeated wrong logins are blocked for a while.</li>
+    <li>Uploaded files are stored under random names and are only served to people allowed to see them.</li>
+    <li>The live site should be served over HTTPS.</li>
+  </ul>
+
+  <h2>Your rights</h2>
+  <p>You may ask to see, correct or remove your personal data, and you may withdraw your consent. Contact the thesis coordinator of your school.</p>
+</section>
+<%- include('partials/footer') %>

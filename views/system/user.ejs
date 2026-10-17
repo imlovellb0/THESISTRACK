@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1><%= u.name %></h1><a class="small" href="/system/users">&larr; All users</a></div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <header><h2>Account</h2><span class="pill <%= u.active ? 'good' : 'bad' %>"><%= u.active ? 'Active' : 'Inactive' %></span></header>
+    <p class="small muted"><%= L.ROLE_LABEL[u.role] %> &middot; <% if (w) { %><a href="/system/workspaces/<%= w.id %>"><%= w.name %></a><% } else { %>no workspace<% } %> &middot; created <%= L.fmtDate(u.created_at) %></p>
+    <form class="stack" method="post" action="/system/users/<%= u.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Full name</span><input type="text" name="name" value="<%= u.name %>" maxlength="255" required></label>
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= u.email %>" maxlength="190" required></label>
+      <% if (u.role === 'student') { %><label class="field"><span>Student ID number</span><input type="text" name="student_no" value="<%= u.student_no || '' %>" maxlength="30"></label><% } %>
+      <button class="btn primary" type="submit">Save changes</button>
+    </form>
+  </section>
+  <% if (groups.length) { %>
+  <section class="card">
+    <header><h2><%= u.role === 'adviser' ? 'Advises' : 'Member of' %></h2></header>
+    <ul class="list"><% groups.forEach(g => { %><li><%= g.name %></li><% }) %></ul>
+  </section>
+  <% } %>
+  <section class="card">
+    <header><h2>Latest activity</h2></header>
+    <ul class="list log"><% activity.forEach(a => { %><li><span><%= a.action %></span><span class="small muted"><%= L.fmtDateTime(a.created_at) %></span></li><% }) %>
+    <% if (!activity.length) { %><li class="muted">Nothing recorded.</li><% } %></ul>
+  </section>
+</div>
+<aside class="col">
+  <section class="card">
+    <header><h2>Actions</h2></header>
+    <% if (self) { %>
+      <p class="small muted">This is your own account. Change your password under <a href="/account">My account</a>.</p>
+    <% } else { %>
+    <div class="stack">
+      <% if (u.role !== 'panel') { %>
+      <form method="post" action="/system/users/<%= u.id %>/reset-password" onsubmit="return confirm('Reset this password? A new temporary password is shown once, and the user is signed out.')"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn" type="submit">Reset password</button></form>
+      <form method="post" action="/system/users/<%= u.id %>/sign-out"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn" type="submit">Sign out of every device</button></form>
+      <% } %>
+      <form method="post" action="/system/users/<%= u.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn <%= u.active ? 'bad' : 'good' %>" type="submit"><%= u.active ? 'Deactivate account' : 'Activate account' %></button></form>
+    </div>
+    <% } %>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

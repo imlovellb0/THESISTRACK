@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+<div class="pagehead"><h1>My profile</h1></div>
+<section class="card" style="max-width:36rem">
+  <div class="profilehead">
+    <%- include('partials/avatar', { u: me, size: 'lg' }) %>
+    <div>
+      <h2 style="margin:0 0 4px"><%= me.name %></h2>
+      <% if (me.role === 'student') { %><div class="small">Student ID <b class="mono"><%= me.student_no || 'not recorded' %></b></div>
+      <% } else { %><div class="small"><%= L.ROLE_LABEL[me.role] %><% if (workspace) { %> · <%= workspace.name %><% } %></div><% } %>
+      <div class="small muted"><%= me.email %></div>
+    </div>
+  </div>
+
+  <form class="stack" method="post" action="/profile/avatar" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span><%= me.avatar ? 'Replace your profile photo' : 'Upload a profile photo' %> <span class="hint">(JPG, PNG or WEBP, up to 3 MB)</span></span>
+      <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required></label>
+    <div class="row">
+      <button class="btn primary" type="submit"><%= me.avatar ? 'Replace photo' : 'Upload photo' %></button>
+    </div>
+  </form>
+  <% if (me.avatar) { %>
+  <form method="post" action="/profile/avatar/delete">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <button class="btn bad" type="submit" onclick="return confirm('Remove your profile photo?')">Remove photo</button>
+  </form>
+  <% } %>
+  <% if (me.role === 'student') { %>
+    <p class="small muted">Your photo is shown to your group mates, your adviser and your coordinator. It is separate from the student ID photo you gave when you registered, which only your coordinator can see.</p>
+  <% } else { %>
+    <p class="small muted">Your photo is shown to the students and staff of your workspace.</p>
+  <% } %>
+  <p class="small"><a href="/account"><%= ['admin', 'superadmin'].includes(me.role) ? 'Edit my name or change my password' : 'Change my password' %></a> · <a href="/">Back</a></p>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Announcements</h1></div>
+<div class="layout">
+<section class="card">
+  <header><h2>Board</h2></header>
+  <% if (!items.length) { %><p class="muted">Nothing posted.</p><% } %>
+  <ul class="list">
+    <% items.forEach(n => { %>
+      <li><b><%= n.title %></b><span class="small"><%= n.body %></span>
+        <span class="row small muted"><%= L.fmtDate(n.created_at) %>
+          <form method="post" action="/admin/announcements/<%= n.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit">Remove</button></form></span></li>
+    <% }) %>
+  </ul>
+</section>
+<section class="card">
+  <header><h2>Post an announcement</h2></header>
+  <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+  <form class="stack" method="post" action="/admin/announcements">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Title</span><input type="text" name="title" value="<%= form.title || '' %>" maxlength="120" required></label>
+    <label class="field"><span>Message</span><textarea name="body" maxlength="2000" required><%= form.body || '' %></textarea></label>
+    <button class="btn primary" type="submit">Post to everyone</button>
+  </form>
+</section>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>System overview</h1><span class="muted small">Every workspace on this site</span></div>
+<div class="stats">
+  <div class="stat"><b><%= counts.workspaces %></b><span>Workspaces<% if (counts.suspended) { %> (<%= counts.suspended %> suspended)<% } %></span></div>
+  <div class="stat"><b><%= counts.coordinators %></b><span>Coordinators</span></div>
+  <div class="stat"><b><%= counts.advisers %></b><span>Advisers</span></div>
+  <div class="stat"><b><%= counts.students %></b><span>Students</span></div>
+  <div class="stat"><b><%= counts.panel %></b><span>Panel members</span></div>
+  <div class="stat"><b><%= counts.groups %></b><span>Thesis groups</span></div>
+  <div class="stat"><b><%= counts.submissions %></b><span>Files submitted</span></div>
+  <div class="stat"><b><%= counts.inactive %></b><span>Inactive accounts</span></div>
+</div>
+<% if (attention.length) { %>
+<div class="flash warn"><b>Needs attention:</b>
+  <% attention.forEach(w => { %><br><a href="/system/workspaces/<%= w.id %>"><%= w.name %></a> has no active coordinator.<% }) %></div>
+<% } %>
+<% if (counts.noAdviser) { %><div class="flash warn"><%= counts.noAdviser %> group<%= counts.noAdviser === 1 ? ' has' : 's have' %> no adviser yet.</div><% } %>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <header><h2>Recent activity</h2><a class="small" href="/system/audit">See all</a></header>
+    <ul class="list log">
+      <% activity.forEach(a => { %><li><span><b><%= a.name || 'System' %></b> <%= a.action %><% if (a.workspace_name) { %> <span class="pill"><%= a.workspace_name %></span><% } %></span><span class="small muted"><%= L.fmtDateTime(a.created_at) %></span></li><% }) %>
+      <% if (!activity.length) { %><li class="muted">Nothing yet.</li><% } %>
+    </ul>
+  </section>
+</div>
+<aside class="col">
+  <section class="card">
+    <header><h2>Health</h2><a class="small" href="/system/settings">Details</a></header>
+    <ul class="list">
+      <% health.forEach(h => { %><li><span><span class="pill <%= h.ok ? 'good' : 'warn' %>"><%= h.ok ? 'OK' : 'Check' %></span> <%= h.name %></span></li><% }) %>
+    </ul>
+  </section>
+  <section class="card">
+    <header><h2>Quick links</h2></header>
+    <ul class="list small">
+      <li><a href="/system/workspaces">Add a workspace and its coordinator</a></li>
+      <li><a href="/system/announcements">Send an announcement to everyone</a></li>
+      <li><a href="/system/users.csv">Download every account (CSV)</a></li>
+    </ul>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

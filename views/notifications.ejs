@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+<div class="pagehead"><h1>Notifications</h1><span class="muted small"><%= wasUnread %> new</span>
+  <% if (items.length) { %><form method="post" action="/notifications/clear" onsubmit="return confirm('Delete all your notifications?')"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Clear all</button></form><% } %></div>
+<%
+  const SECTIONS = [
+    { key: 'adviser', title: 'From your adviser', mine: 'From advisers' },
+    { key: 'coordinator', title: 'From the coordinator', mine: 'From the coordinator' },
+    { key: 'student', title: 'From your group', mine: 'From students' },
+    { key: 'system', title: 'Reminders', mine: 'Reminders' },
+  ];
+  const known = SECTIONS.map((s) => s.key);
+  const groups = SECTIONS.map((s) => ({ ...s, rows: items.filter((n) => (known.includes(n.source) ? n.source : 'system') === s.key) })).filter((g) => g.rows.length);
+%>
+<% if (!items.length) { %><section class="card"><p class="muted">Nothing yet. You will see submissions, reviews, deadlines and schedules here.</p></section><% } %>
+<% groups.forEach((g) => { %>
+<section class="card notif-group notif-<%= g.key %>">
+  <h2 class="notif-title"><%= user.role === 'student' ? g.title : g.mine %> <span class="notif-count"><%= g.rows.length %></span></h2>
+  <% g.rows.forEach((n) => { %>
+    <div class="notif <%= !n.is_read ? 'unread' : '' %>">
+      <%
+        let parts = String(n.message).split('\n');
+        // Older declines were saved as one sentence; split them at "Reason:" too.
+        if (parts.length === 1) { const k = parts[0].indexOf(' Reason: '); if (k > -1) parts = [parts[0].slice(0, k), parts[0].slice(k + 1)]; }
+        const head = parts[0], extra = parts.slice(1).join('\n');
+      %>
+      <span>
+        <% if (n.link) { %><a href="<%= n.link %>"><%= head %></a><% } else { %><%= head %><% } %>
+        <% if (extra) { %><span class="notif-detail"><%= extra %></span><% } %>
+      </span>
+      <div class="small muted"><%= L.fmtDateTime(n.created_at) %>
+        <form method="post" action="/notifications/<%= n.id %>/delete" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn" type="submit" aria-label="Delete this notification">Delete</button></form></div>
+    </div>
+  <% }) %>
+</section>
+<% }) %>
+<%- include('partials/footer') %>

@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Advisers</h1><span class="muted small">Advisers cannot register on their own. You invite them here, and they finish signing up with a one-time code sent to their email.</span></div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<div class="layout">
+<section class="card">
+  <header><h2>Invitations</h2></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Invited</th><th></th></tr></thead>
+    <tbody>
+    <% invites.forEach(i => { %>
+      <tr>
+        <td><%= i.name %></td>
+        <td class="mono"><%= i.email %></td>
+        <td><% if (i.status === 'Registered') { %><span class="pill good">Registered</span>
+            <% } else if (i.status === 'Cancelled') { %><span class="pill">Cancelled</span>
+            <% } else if (i.expired) { %><span class="pill warn">Code expired</span>
+            <% } else { %><span class="pill info">Invited</span><% } %></td>
+        <td class="small"><%= L.fmtDateTime(i.created_at) %></td>
+        <td>
+          <% if (i.status === 'Invited') { %>
+          <div class="row">
+            <form method="post" action="/admin/advisers/<%= i.id %>/resend"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Send a new code</button></form>
+            <form method="post" action="/admin/advisers/<%= i.id %>/cancel"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Cancel</button></form>
+          </div>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!invites.length) { %><tr><td colspan="5" class="muted">No invitations yet. Invite an adviser on the right.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <header><h2>Invite an adviser</h2></header>
+  <form class="stack" method="post" action="/admin/advisers">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" maxlength="255" required></label>
+    <label class="field"><span>Email <span class="hint">(a Gmail address the adviser can open)</span></span><input type="email" name="email" value="<%= form.email || '' %>" maxlength="190" placeholder="name@gmail.com" required></label>
+    <button class="btn primary" type="submit">Send invitation</button>
+  </form>
+  <p class="small muted">The adviser gets a 6-digit code by email that works for <%= ttl %> minutes. They open
+    <a href="/register/adviser">/register/adviser</a>, enter their email and the code, and choose a password.</p>
+  <% if (!mailReady) { %><p class="small"><span class="pill warn">Email not set up</span> Codes are saved to <span class="mono">outbox/mail.log</span> in the project folder instead of being emailed. See the README to connect Gmail.</p><% } %>
+</section>
+</div>
+<%- include('../partials/footer') %>

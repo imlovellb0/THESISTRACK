@@ -1,0 +1,2 @@
+<%# Profile picture, or the person's initials when there is none. Pass u (id, name, avatar) and size (xs, sm or lg). %>
+<% if (u.avatar) { %><img class="avatar <%= size %>" src="/avatar/<%= u.id %>?v=<%= encodeURIComponent(u.avatar) %>" alt=""><% } else { %><span class="avatar <%= size %>" aria-hidden="true"><%= String(u.name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() %></span><% } %>

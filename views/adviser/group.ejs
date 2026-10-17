@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<div>
+  <div class="crumbs"><a href="/adviser">My groups</a> / <%= g.name %></div>
+  <h1><%= g.title %></h1>
+  <ul class="row" style="list-style:none;padding:0;margin:6px 0 0;gap:6px 16px">
+    <% members.forEach(m => { %><li class="row small"><%- include('../partials/avatar', { u: m, size: 'sm' }) %><span><%= m.name %><% if (m.is_leader) { %> <span class="pill info">Leader</span><% } %></span></li><% }) %>
+  </ul>
+</div>
+
+<section class="card">
+  <header><h2>Chapters</h2><span class="small muted">Change a deadline and press Save. Students are notified.</span></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Chapter</th><th>Status</th><th>Latest file</th><th>Deadline</th><th></th></tr></thead>
+    <tbody>
+    <% chapters.forEach(c => { %>
+      <tr>
+        <td><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></td>
+        <td data-label="Status"><%- L.pill(c.status) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
+        <td class="mono" data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> <span class="muted">v<%= c.versions %></span><% } else { %>None<% } %></td>
+        <td data-label="Deadline">
+          <form class="row" method="post" action="/adviser/group/<%= g.id %>/chapter/<%= c.number %>/deadline">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <input type="date" name="deadline" value="<%= c.deadline || '' %>" aria-label="Deadline for chapter <%= c.number %>" required>
+            <button class="btn sm" type="submit">Save</button>
+          </form>
+        </td>
+        <td><a class="btn sm <%= c.status === 'submitted' ? 'primary' : '' %>" href="/adviser/group/<%= g.id %>/chapter/<%= c.number %>"><%= c.status === 'submitted' ? 'Review' : 'Open' %></a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<section class="card">
+  <header><h2>Defense</h2></header>
+  <p class="small"><% if (g.defense_date) { %>Defense on <b><%= L.fmtDate(g.defense_date) %></b> at <%= g.defense_time %>, room <%= g.room %>.<% } else { %>Not scheduled yet.<% } %></p>
+</section>
+<%- include('../partials/footer') %>

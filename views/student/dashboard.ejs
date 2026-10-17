@@ -1,0 +1,190 @@
+<%- include('../partials/header') %>
+<div class="layout">
+<div class="col">
+  <%# What to do next: the nearest deadline, or what the group is waiting for %>
+  <% const tone = next.kind === 'overdue' ? 'bad' : next.kind === 'due' ? (next.days <= 3 ? 'warn' : 'info') : next.kind === 'done' ? 'good' : 'info'; %>
+  <section class="card nextup <%= tone %>">
+    <span class="label">Next up</span>
+    <% if (next.kind === 'overdue' || next.kind === 'due') { %>
+      <div class="row">
+        <div style="flex:1;min-width:12rem">
+          <b>Chapter <%= next.chapter.number %>: <%= L.CH_NAMES[next.chapter.number - 1] %></b><br>
+          <span class="small"><%= next.kind === 'overdue' ? 'was due ' : 'is due ' %><%= L.inDays(next.days) %> (<%= L.fmtDate(next.chapter.deadline) %>)<%= next.chapter.status === 'revision' ? ' · your adviser asked for a revision' : next.chapter.status === 'rejected' ? ' · rejected, upload a new version' : '' %></span>
+        </div>
+        <a class="btn <%= next.kind === 'overdue' ? 'bad' : 'primary' %>" href="/student/chapter/<%= next.chapter.number %>"><%= next.chapter.status === 'none' ? 'Upload' : 'Open chapter' %></a>
+      </div>
+    <% } else if (next.kind === 'review') { %>
+      <b>Chapter <%= next.chapter.number %> is with your adviser.</b> <span class="small muted">Nothing to do until they reply.</span>
+    <% } else if (next.kind === 'done') { %>
+      <b>All five chapters are approved.</b> <span class="small muted"><%= g.defense_date ? 'Prepare for your defense below.' : 'Ask the coordinator about your defense schedule.' %></span>
+    <% } else { %>
+      <b>No deadlines are set yet.</b> <span class="small muted">Your adviser sets them once assigned.</span>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <header>
+      <div><span class="label"><%= g.name %> · adviser <%= adviser ? adviser.name : pendingAdviser ? pendingAdviser + ' (waiting for them to accept)' : 'not assigned yet' %></span>
+        <h1 style="margin-top:2px"><%= g.title %></h1></div>
+      <%- L.hpill(health) %>
+    </header>
+    <div class="row"><div style="flex:1;min-width:10rem"><%- L.bar(approved) %></div>
+      <span class="small muted"><%= openComments %> unresolved comment<%= openComments === 1 ? '' : 's' %></span></div>
+    <div class="timeline">
+      <% chapters.forEach(c => { %>
+        <a class="step <%= c.status %>" href="/student/chapter/<%= c.number %>">
+          <span class="label">Chapter <%= c.number %></span><b><%= L.CH_NAMES[c.number - 1] %></b><span><%- L.pill(c.status) %></span>
+        </a>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="card">
+    <header><h2>My chapters</h2><span class="small muted">Open a chapter to upload, see versions and read feedback</span></header>
+    <div class="tablewrap"><table class="cards">
+      <thead><tr><th>Chapter</th><th>Status</th><th>Deadline</th><th>Latest file</th><th></th></tr></thead>
+      <tbody>
+      <% chapters.forEach(c => { %>
+        <tr>
+          <td><a href="/student/chapter/<%= c.number %>"><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></a></td>
+          <td data-label="Status"><%- L.pill(c.status) %></td>
+          <td data-label="Deadline"><%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
+          <td class="mono" data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> <span class="muted">v<%= c.versions %></span><% } else { %>None<% } %></td>
+          <td><a class="btn sm" href="/student/chapter/<%= c.number %>"><%= ['none','revision','rejected'].includes(c.status) ? 'Upload' : 'Open' %></a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card" id="members">
+    <header><h2>Group members</h2><span class="small muted"><%= members.length + invites.length %> of <%= maxSize %> places used</span></header>
+    <ul class="list">
+      <% members.forEach(m => { %>
+        <li>
+          <span class="row"><%- include('../partials/avatar', { u: m, size: 'sm' }) %><b><%= m.name %></b>
+            <% if (m.is_leader) { %><span class="pill info">Leader</span><% } %>
+            <% if (m.id === user.id) { %><span class="small muted">(you)</span><% } %></span>
+          <span class="small muted"><%= m.email %></span>
+          <% if (isLeader && m.id !== user.id) { %>
+          <span class="row small">
+            <form method="post" action="/student/group/members/<%= m.id %>/leader"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Make <%= m.name.replace(/['\\]/g, '') %> the group leader? You will no longer be able to add or remove members.')">Make leader</button></form>
+            <form method="post" action="/student/group/members/<%= m.id %>/remove"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Remove <%= m.name.replace(/['\\]/g, '') %> from the group?')">Remove</button></form>
+          </span>
+          <% } %>
+        </li>
+      <% }) %>
+      <% invites.forEach(i => { %>
+        <li>
+          <span class="row"><span class="avatar sm" aria-hidden="true">?</span><b><%= i.email %></b><span class="pill">Invited</span></span>
+          <span class="small muted">Joins automatically when they register with your workspace code.</span>
+          <form method="post" action="/student/group/invites/<%= i.id %>/cancel"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit">Cancel invitation</button></form>
+        </li>
+      <% }) %>
+    </ul>
+
+    <% if (isLeader) { %>
+    <div class="inset codebox">
+      <span class="label">Group join code</span>
+      <b class="mono code"><%= g.join_code %></b>
+      <span class="small muted">Teammates with an account choose <i>Join a group</i> and type this code, or open this link:</span>
+      <span class="mono small linkline"><%= joinLink %></span>
+      <form method="post" action="/student/group/code/new"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Make a new code? The old code and link will stop working.')">Make a new code</button></form>
+    </div>
+    <form class="row" method="post" action="/student/group/members">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field" style="flex:1;min-width:12rem"><span>Add members by email <span class="hint">(several: separate with commas. No account yet? They are invited and join when they register.)</span></span><input type="text" name="email" placeholder="classmate@student.edu.ph" required></label>
+      <button class="btn" type="submit" style="align-self:flex-end">Add</button>
+    </form>
+    <% } else { %>
+      <p class="small muted">Only the group leader can add or remove members.</p>
+    <% } %>
+    <% if (members.length > 1) { %>
+    <form method="post" action="/student/group/leave">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn bad sm" type="submit" onclick="return confirm('Leave this group?<%= isLeader ? ' The member who joined first becomes the leader.' : '' %>')">Leave group</button>
+    </form>
+    <% } %>
+  </section>
+</div>
+
+<aside class="col">
+  <% if (stepsLeft) { %>
+  <section class="card">
+    <header><h2>First steps</h2><span class="small muted"><%= steps.length - stepsLeft %> of <%= steps.length %> done</span></header>
+    <%- include('../partials/checklist', { steps }) %>
+  </section>
+  <% } %>
+
+  <section class="card">
+    <header><h2>Defense schedule</h2></header>
+    <% if (g.defense_date) { %>
+      <div class="inset"><b><%= L.fmtDate(g.defense_date) %></b> at <b><%= g.defense_time %></b><br><span class="small muted">Room <%= g.room %></span></div>
+      <% if (defenseIn !== null && defenseIn >= 0) { %><p class="small"><b><%= defenseIn === 0 ? 'Your defense is today.' : defenseIn + ' day' + (defenseIn === 1 ? '' : 's') + ' to go.' %></b></p><% } else { %><p class="small muted">This defense date has passed.</p><% } %>
+    <% } else { %>
+      <p class="muted small">No date yet. The coordinator schedules it after your adviser approves Chapter 4.</p>
+    <% } %>
+  </section>
+
+  <% if (coordinator) { %>
+  <section class="card">
+    <header><h2>Coordinator</h2></header>
+    <div class="row"><%- include('../partials/avatar', { u: coordinator, size: 'sm' }) %><b><%= coordinator.name %></b></div>
+  </section>
+  <% } %>
+
+  <section class="card">
+    <header><h2>Adviser</h2></header>
+    <% if (adviser) { %>
+      <div class="row"><%- include('../partials/avatar', { u: adviser, size: 'sm' }) %><b><%= adviser.name %></b></div>
+      <a class="btn sm" href="#consult">Book a consultation</a>
+    <% } else if (pendingAdviser) { %>
+      <p class="small"><b><%= pendingAdviser %></b> has been asked and has not answered yet.</p>
+    <% } else { %>
+      <p class="muted small">The coordinator has not assigned an adviser yet.</p>
+    <% } %>
+  </section>
+
+  <section class="card" id="consult">
+    <header><h2>Consultations</h2></header>
+    <% if (!consults.length) { %><p class="muted small">No requests yet.</p><% } %>
+    <ul class="list">
+      <% consults.forEach(k => { %>
+        <li><b><%= L.fmtDate(k.date) %>, <%= k.slot %></b><span class="small"><%= k.topic %></span>
+          <span><span class="pill <%= k.status === 'Confirmed' ? 'good' : k.status === 'Declined' ? 'bad' : 'info' %>"><%= k.status %></span></span></li>
+      <% }) %>
+    </ul>
+    <% if (adviser) { %>
+    <form class="stack" method="post" action="/student/consultations">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="fields">
+        <label class="field"><span>Date</span><input type="date" name="date" min="<%= L.today() %>" required></label>
+        <label class="field"><span>Time</span><select name="slot"><% slots.forEach(s => { %><option><%= s %></option><% }) %></select></label>
+      </div>
+      <label class="field"><span>Topic</span><input type="text" name="topic" maxlength="200" placeholder="Chapter 3 survey questions" required></label>
+      <button class="btn primary" type="submit">Request consultation</button>
+    </form>
+    <% } else { %><p class="small muted">Booking opens when your adviser is assigned.</p><% } %>
+  </section>
+
+  <section class="card">
+    <header><h2>Recent activity</h2></header>
+    <% if (!feed.length) { %><p class="muted small">Nothing has happened yet.</p><% } %>
+    <ul class="list feed">
+      <% feed.forEach(f => { %>
+        <li><% if (f.ch) { %><a href="/student/chapter/<%= f.ch %>"><%= f.text %></a><% } else { %><span><%= f.text %></span><% } %>
+          <span class="small muted"><%= L.fmtDateTime(f.at) %></span></li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <section class="card">
+    <header><h2>Announcements</h2></header>
+    <ul class="list">
+      <% notices.forEach(n => { %><li><b><%= n.title %></b><span class="small"><%= n.body %></span><span class="small muted"><%= L.fmtDate(n.created_at) %></span></li><% }) %>
+      <% if (!notices.length) { %><li class="muted small">No announcements.</li><% } %>
+    </ul>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

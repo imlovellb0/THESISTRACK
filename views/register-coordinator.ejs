@@ -1,0 +1,21 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+    <h1>Open your thesis workspace</h1>
+    <p class="small muted">For thesis coordinators and teachers. You need an invitation from the system administrator: it gives you an invitation code by email. You then get a private workspace. Only you and the students, advisers and panel members you invite can see its groups, files and announcements.</p>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/register/coordinator">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Email <span class="hint">(the address the invitation was sent to)</span></span><input type="email" name="email" value="<%= form.email || '' %>" autocomplete="username" required></label>
+      <label class="field"><span>Invitation code</span><input type="text" name="code" value="<%= form.code || '' %>" class="mono" maxlength="14" autocomplete="off" spellcheck="false" placeholder="8 letters and numbers" required></label>
+      <label class="field"><span>Workspace name <span class="hint">(for example: BSIT 4A Thesis, AY 2026-27)</span></span><input type="text" name="workspace" value="<%= form.workspace || '' %>" maxlength="120" required></label>
+      <label class="field"><span>Your full name</span><input type="text" name="name" value="<%= form.name || '' %>" autocomplete="name" required></label>
+      <label class="field"><span>Password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="field"><span>Confirm password</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+      <label class="check"><input type="checkbox" name="consent" required> <span>I have read the <a href="/privacy" target="_blank" rel="noopener">Privacy Notice</a> and agree to look after my students' data responsibly.</span></label>
+      <button class="btn primary" type="submit">Create workspace</button>
+    </form>
+    <p class="small">Already registered? <a href="/login">Sign in</a>.</p>
+  </section>
+</div>
+<%- include('partials/footer') %>

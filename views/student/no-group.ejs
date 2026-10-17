@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<div class="authwrap" style="margin-top:2vh">
+  <section class="card">
+    <h1>Create your thesis group</h1>
+    <p class="muted small">You become the group leader. Add teammates by email now (a teammate with no account yet is invited and joins when they register), or share the group's join code afterwards. A group holds up to <%= maxSize %> people.</p>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/student/group">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Group name</span><input type="text" name="name" value="<%= form.name || '' %>" maxlength="60" required></label>
+      <label class="field"><span>Thesis title</span><input type="text" name="title" value="<%= form.title || '' %>" maxlength="200" required></label>
+      <label class="field"><span>Teammate emails <span class="hint">(optional, separate with commas)</span></span><textarea name="emails" placeholder="maria@student.edu.ph, paolo@student.edu.ph"><%= form.emails || '' %></textarea></label>
+      <div class="row"><button class="btn primary" type="submit">Create group</button><a class="btn" href="/student">Back</a></div>
+    </form>
+  </section>
+</div>
+<%- include('../partials/footer') %>

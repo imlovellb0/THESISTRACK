@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+    <h1>My account</h1>
+    <p class="small muted"><%= user.name %> &middot; <%= user.email %> &middot; <%= L.ROLE_LABEL[user.role] %></p>
+    <% if (user.role === 'admin' || user.role === 'superadmin') { %>
+    <h2>Your name</h2>
+    <form class="stack" method="post" action="/account/name">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Full name <span class="hint">(shown to your students and advisers)</span></span><input type="text" name="name" value="<%= user.name %>" maxlength="255" autocomplete="name" required></label>
+      <button class="btn primary" type="submit">Save name</button>
+    </form>
+    <% } %>
+    <h2>Change password</h2>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/account/password">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Current password</span><input type="password" name="current" autocomplete="current-password" required></label>
+      <label class="field"><span>New password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="field"><span>Confirm new password</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+      <button class="btn primary" type="submit">Change password</button>
+    </form>
+  </section>
+</div>
+<%- include('partials/footer') %>

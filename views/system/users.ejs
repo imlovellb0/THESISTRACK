@@ -1,0 +1,72 @@
+<%- include('../partials/header') %>
+<% const qs = (p) => `?q=${encodeURIComponent(q)}&role=${role}&workspace=${workspace}&status=${status}&page=${p}`; %>
+<div class="pagehead"><h1>Users</h1><span class="muted small"><%= total %> account<%= total === 1 ? '' : 's' %></span></div>
+<div class="layout">
+<section class="card">
+  <form class="filterbar" method="get" action="/system/users">
+    <label class="field"><span>Search</span><input type="search" name="q" value="<%= q %>" placeholder="Name, email or student ID"></label>
+    <label class="field" style="min-width:9rem;flex:0"><span>Role</span><select name="role"><option value="">All</option>
+      <% Object.entries(roleLabels).forEach(([v, l]) => { %><option value="<%= v %>" <%= role === v ? 'selected' : '' %>><%= l %></option><% }) %></select></label>
+    <label class="field" style="min-width:11rem;flex:0"><span>Workspace</span><select name="workspace"><option value="">All</option><option value="none" <%= workspace === 'none' ? 'selected' : '' %>>No workspace</option>
+      <% workspaces.forEach(w => { %><option value="<%= w.id %>" <%= String(w.id) === workspace ? 'selected' : '' %>><%= w.name %></option><% }) %></select></label>
+    <label class="field" style="min-width:8rem;flex:0"><span>Status</span><select name="status"><option value="">All</option>
+      <option value="active" <%= status === 'active' ? 'selected' : '' %>>Active</option><option value="inactive" <%= status === 'inactive' ? 'selected' : '' %>>Inactive</option></select></label>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn" href="/system/users.csv<%= qs(1) %>">Download CSV</a>
+    <span class="row selbar seltool"><button class="btn selbtn" type="button" aria-pressed="false">Select</button><button class="btn selallbtn" type="button" hidden>Select all</button></span>
+  </form>
+  <form id="bulkform" class="bulkbar" method="post" action="/system/users/bulk" hidden>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="back" value="/system/users<%= qs(page) %>">
+    <b id="bulkcount">0 accounts selected</b>
+    <button class="btn sm" type="submit" name="action" value="activate">Activate</button>
+    <button class="btn sm" type="submit" name="action" value="deactivate">Deactivate</button>
+    <button class="btn sm bad" type="submit" name="action" value="remove">Remove</button>
+  </form>
+  <div class="tablewrap"><table>
+    <thead><tr><th class="selcol"><input type="checkbox" class="selall" aria-label="Select all on this page"></th><th>Name</th><th>Role</th><th>Workspace</th><th>Email</th><th></th></tr></thead>
+    <tbody>
+    <% rows.forEach(u => { %>
+      <tr>
+        <td class="selcol"><% if (u.id !== user.id) { %><input type="checkbox" name="ids" value="<%= u.id %>" form="bulkform" aria-label="Select <%= u.name %>"><% } %></td>
+        <td style="white-space:nowrap"><a href="/system/users/<%= u.id %>"><b><%= u.name %></b></a><% if (!u.active) { %> <span class="pill">Inactive</span><% } %></td>
+        <td><%= L.ROLE_LABEL[u.role] %></td>
+        <td><% if (u.workspace_id) { %><a href="/system/workspaces/<%= u.workspace_id %>"><%= u.workspace_name %></a><% } else { %><span class="muted">None</span><% } %></td>
+        <td class="mono"><%= u.email %></td>
+        <td>
+          <div class="rowbtns">
+            <a class="btn sm" href="/system/users/<%= u.id %>">Manage</a>
+            <% if (u.id !== user.id) { %>
+            <form method="post" action="/system/users/<%= u.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="/system/users<%= qs(page) %>">
+              <button class="btn sm" type="submit"><%= u.active ? 'Deactivate' : 'Activate' %></button></form>
+            <% } %>
+          </div>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!rows.length) { %><tr><td colspan="6" class="muted">No matching accounts.</td></tr><% } %>
+    </tbody>
+  </table></div>
+  <% if (pages > 1) { %>
+  <p class="small">
+    <% if (page > 1) { %><a href="<%= qs(page - 1) %>">&larr; Previous</a><% } %>
+    Page <%= page %> of <%= pages %>
+    <% if (page < pages) { %><a href="<%= qs(page + 1) %>">Next &rarr;</a><% } %>
+  </p>
+  <% } %>
+</section>
+<section class="card">
+  <header><h2>Add a system administrator</h2></header>
+  <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+  <p class="small muted">System administrators manage every workspace. Coordinators are added from a workspace page.</p>
+  <form class="stack" method="post" action="/system/users/administrator">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" required></label>
+    <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" required></label>
+    <label class="field"><span>Starting password <span class="hint">(at least 10 characters)</span></span><input type="password" name="password" minlength="10" autocomplete="new-password" required></label>
+    <button class="btn primary" type="submit">Add administrator</button>
+  </form>
+</section>
+</div>
+<script src="/static/bulk.js"></script>
+<%- include('../partials/footer') %>

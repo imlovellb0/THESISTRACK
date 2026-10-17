@@ -1,0 +1,48 @@
+<%- include('../partials/header') %>
+<div>
+  <div class="crumbs"><a href="/adviser">My groups</a> / <a href="/adviser/group/<%= g.id %>"><%= g.name %></a> / Chapter <%= c.number %></div>
+  <div class="pagehead"><h1>Chapter <%= c.number %>: <%= L.CH_NAMES[c.number - 1] %></h1><%- L.pill(c.status) %></div>
+</div>
+
+<div class="two">
+  <section class="card">
+    <header><h2>Submitted versions</h2></header>
+    <% if (!versions.length) { %><p class="muted small">The group has not submitted this chapter.</p><% } %>
+    <ul class="list">
+      <% versions.forEach(v => { %>
+        <li><span class="mono">v<%= v.version_no %> · <a href="/files/<%= v.id %>"><%= v.original_name %></a></span>
+          <span class="small muted">Uploaded <%= L.fmtDateTime(v.uploaded_at) %> by <%= v.by_name %> &middot; <a class="small" href="/ai/submission/<%= v.id %>">AI check</a></span></li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <section class="card">
+    <header><h2>Comment history</h2></header>
+    <% if (!comments.length) { %><p class="muted small">No comments yet.</p><% } %>
+    <div class="thread">
+      <% comments.forEach(m => { %>
+        <div class="msg <%= m.resolved ? 'done' : '' %>">
+          <div class="meta"><%= m.author %> · <%= L.fmtDateTime(m.created_at) %> · <%= m.resolved ? 'resolved by students' : 'open' %></div>
+          <div><%= m.body %></div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+</div>
+
+<section class="card">
+  <header><h2>Your review</h2></header>
+  <% if (c.status !== 'submitted') { %><p class="small muted">Decisions unlock when the group submits this chapter. You can still leave a comment.</p><% } %>
+  <form class="stack" method="post" action="/adviser/group/<%= g.id %>/chapter/<%= c.number %>/review">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Comment <span class="hint">(required to return or reject)</span></span>
+      <textarea name="comment" maxlength="2000" placeholder="Be specific. Students see this next to the chapter."></textarea></label>
+    <div class="row">
+      <button class="btn good" type="submit" name="decision" value="approved" <%= c.status === 'submitted' ? '' : 'disabled' %>>Approve</button>
+      <button class="btn warn" type="submit" name="decision" value="revision" <%= c.status === 'submitted' ? '' : 'disabled' %>>Return for revision</button>
+      <button class="btn bad" type="submit" name="decision" value="rejected" <%= c.status === 'submitted' ? '' : 'disabled' %>>Reject</button>
+      <button class="btn" type="submit" formaction="/adviser/group/<%= g.id %>/chapter/<%= c.number %>/comment">Comment only</button>
+    </div>
+  </form>
+</section>
+<%- include('../partials/footer') %>

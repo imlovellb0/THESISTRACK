@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Panel members</h1><span class="muted small">Panel members do not sign in. You record them here and assign them to a group's defense panel.</span></div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<div class="layout">
+<section class="card">
+  <header><h2>All panel members</h2></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Assigned to</th><th></th></tr></thead>
+    <tbody>
+    <% members.forEach(m => { %>
+      <tr>
+        <td>
+          <form id="edit<%= m.id %>" method="post" action="/admin/panel/<%= m.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"></form>
+          <input form="edit<%= m.id %>" type="text" name="name" value="<%= m.name %>" maxlength="255" required aria-label="Name">
+          <% if (!m.active) { %><span class="pill">Inactive</span><% } %>
+        </td>
+        <td><input form="edit<%= m.id %>" type="email" name="email" value="<%= m.email %>" maxlength="190" required aria-label="Email"></td>
+        <td class="small"><%= m.groups.length ? m.groups.join(', ') : 'No group yet' %></td>
+        <td>
+          <div class="row">
+            <button class="btn sm primary" type="submit" form="edit<%= m.id %>">Save</button>
+            <form method="post" action="/admin/panel/<%= m.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn sm" type="submit"><%= m.active ? 'Deactivate' : 'Activate' %></button></form>
+            <form method="post" action="/admin/panel/<%= m.id %>/delete" onsubmit="return confirm('Remove <%= m.name.replace(/[\x27\\]/g, '') %> from the system and from every panel?')"><input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn sm bad" type="submit">Remove</button></form>
+          </div>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!members.length) { %><tr><td colspan="4" class="muted">No panel members yet. Add one on the right.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <header><h2>Add a panel member</h2></header>
+  <form class="stack" method="post" action="/admin/panel">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" maxlength="255" required></label>
+    <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" maxlength="190" required></label>
+    <button class="btn primary" type="submit">Add panel member</button>
+  </form>
+</section>
+</div>
+<%- include('../partials/footer') %>

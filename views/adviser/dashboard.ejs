@@ -1,0 +1,76 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>My groups</h1></div>
+<div class="stats">
+  <div class="stat"><b><%= groups.length %></b><span>Groups advised</span></div>
+  <div class="stat"><b><%= pending %></b><span>Pending reviews</span></div>
+  <div class="stat"><b><%= requests.length %></b><span>Consultation requests</span></div>
+  <div class="stat"><b><%= delayed %></b><span>Groups delayed</span></div>
+</div>
+
+<div class="layout">
+<div class="col">
+  <% if (assignments.length) { %>
+  <section class="card">
+    <header><h2>Advisory requests</h2></header>
+    <p class="small muted">The coordinator asked you to advise these groups. They become yours only when you accept.</p>
+    <% assignments.forEach(a => { %>
+      <div class="stack" style="border-top:1px solid var(--line, #ddd);padding-top:12px;margin-top:12px">
+        <div><b><%= a.group_name %></b><br><span class="small"><%= a.group_title %></span><br>
+          <span class="small muted">Members: <%= a.members.map(m => m.name).join(', ') %></span></div>
+        <form class="stack" method="post" action="/adviser/assignments/<%= a.id %>">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Reason <span class="hint">(required only if you decline)</span></span>
+            <textarea name="reason" rows="2" maxlength="1000" placeholder="For example: I already advise the maximum number of groups."></textarea></label>
+          <div class="row">
+            <button class="btn good" type="submit" name="decision" value="accept" formnovalidate
+              onclick="return confirm('Accept <%= a.group_name.replace(/['\\\\]/g, '') %> and become its adviser?')">Accept and become adviser</button>
+            <button class="btn bad" type="submit" name="decision" value="decline"
+              onclick="if (!this.form.reason.value.trim()) { alert('Write a reason first, so the coordinator knows why you declined.'); this.form.reason.focus(); return false; } return confirm('Decline this request? The coordinator will be told your reason.')">Decline with reason</button>
+          </div>
+        </form>
+      </div>
+    <% }) %>
+  </section>
+  <% } %>
+  <section class="card">
+    <header><h2>Groups</h2></header>
+    <div class="tablewrap"><table class="cards">
+      <thead><tr><th>Group</th><th>Chapters</th><th>Progress</th><th class="num">Pending</th><th>Health</th></tr></thead>
+      <tbody>
+      <% groups.forEach(g => { %>
+        <tr>
+          <td><a href="/adviser/group/<%= g.id %>"><b><%= g.name %></b></a><br><span class="small muted"><%= g.title %></span></td>
+          <td data-label="Chapters"><%- L.strip(g.chapters) %></td>
+          <td data-label="Progress"><%- L.bar(g.approved) %></td>
+          <td class="num" data-label="Pending"><%= g.pending %></td>
+          <td data-label="Health"><%- L.hpill(g.health) %></td>
+        </tr>
+      <% }) %>
+      <% if (!groups.length) { %><tr><td colspan="5" class="muted">No groups yet. The coordinator sends advisory requests, and you accept the ones you can take.</td></tr><% } %>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<aside class="col">
+  <section class="card">
+    <header><h2>Consultation requests</h2></header>
+    <% if (!requests.length) { %><p class="muted small">No pending requests.</p><% } %>
+    <ul class="list">
+      <% requests.forEach(k => { %>
+        <li><b><%= k.group_name %></b><span class="small"><%= L.fmtDate(k.date) %>, <%= k.slot %>. <%= k.topic %></span>
+          <span class="row">
+            <form method="post" action="/adviser/consultations/<%= k.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="status" value="Confirmed"><button class="btn sm good" type="submit">Confirm</button></form>
+            <form method="post" action="/adviser/consultations/<%= k.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="status" value="Declined"><button class="btn sm" type="submit">Decline</button></form>
+          </span></li>
+      <% }) %>
+    </ul>
+  </section>
+  <section class="card">
+    <header><h2>Upcoming meetings</h2></header>
+    <% if (!upcoming.length) { %><p class="muted small">Nothing confirmed.</p><% } %>
+    <ul class="list"><% upcoming.forEach(k => { %><li><b><%= L.fmtDate(k.date) %>, <%= k.slot %></b><span class="small"><%= k.group_name %>: <%= k.topic %></span></li><% }) %></ul>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

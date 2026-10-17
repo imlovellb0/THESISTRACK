@@ -1,0 +1,72 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1><%= ws.name %></h1><a class="small" href="/system/workspaces">&larr; All workspaces</a></div>
+<div class="stats">
+  <div class="stat"><b><%= counts.students %></b><span>Students</span></div>
+  <div class="stat"><b><%= staff.filter(s => s.role === 'adviser').length %></b><span>Advisers</span></div>
+  <div class="stat"><b><%= counts.panel %></b><span>Panel members</span></div>
+  <div class="stat"><b><%= counts.groups %></b><span>Groups</span></div>
+  <div class="stat"><b><%= counts.files %></b><span>Files</span></div>
+</div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <header><h2>Coordinators and advisers</h2></header>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Name</th><th>Role</th><th>Email</th><th></th></tr></thead>
+      <tbody>
+      <% staff.forEach(s => { %>
+        <tr>
+          <td><a href="/system/users/<%= s.id %>"><%= s.name %></a><% if (!s.active) { %> <span class="pill">Inactive</span><% } %></td>
+          <td><%= L.ROLE_LABEL[s.role] %></td><td class="mono"><%= s.email %></td>
+          <td><a class="btn sm" href="/system/users/<%= s.id %>">Manage</a></td>
+        </tr>
+      <% }) %>
+      <% if (!staff.length) { %><tr><td colspan="4" class="muted">Nobody yet. Add a coordinator below.</td></tr><% } %>
+      </tbody>
+    </table></div>
+    <p class="small muted">Students and panel members are listed under <a href="/system/users?workspace=<%= ws.id %>">Users</a>.</p>
+  </section>
+  <section class="card">
+    <header><h2>Add a coordinator</h2></header>
+    <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/coordinators">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" required></label>
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" required></label>
+      <label class="field"><span>Starting password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+      <button class="btn primary" type="submit">Add coordinator</button>
+    </form>
+  </section>
+  <section class="card">
+    <header><h2>Delete this workspace</h2></header>
+    <div class="flash warn">This cannot be undone. It permanently deletes every account in the workspace (including ID photos), all groups, chapters, uploaded files, comments, consultations, announcements and its activity log. To stop access without deleting anything, suspend it instead.</div>
+    <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/delete">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Type the workspace name to confirm: <b><%= ws.name %></b></span><input type="text" name="confirm_name" autocomplete="off" required></label>
+      <label class="field"><span>Your password</span><input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn bad" type="submit" onclick="return confirm('Delete this workspace and all of its data permanently?')">Delete workspace permanently</button>
+    </form>
+  </section>
+</div>
+<aside class="col">
+  <section class="card">
+    <header><h2>Status</h2><span class="pill <%= ws.active ? 'good' : 'bad' %>"><%= ws.active ? 'Active' : 'Suspended' %></span></header>
+    <p class="small muted">A suspended workspace keeps all its data, but nobody in it can sign in and the join code stops working.</p>
+    <form method="post" action="/system/workspaces/<%= ws.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn" type="submit" <% if (ws.active) { %>onclick="return confirm('Suspend this workspace? Everyone in it will be locked out.')"<% } %>><%= ws.active ? 'Suspend workspace' : 'Reactivate workspace' %></button></form>
+  </section>
+  <section class="card">
+    <header><h2>Name</h2></header>
+    <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/rename"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Workspace name</span><input type="text" name="name" value="<%= ws.name %>" maxlength="120" required></label>
+      <button class="btn" type="submit">Rename</button></form>
+  </section>
+  <section class="card">
+    <header><h2>Student join code</h2></header>
+    <p><b class="mono" style="font-size:1.4rem;letter-spacing:.15em"><%= ws.join_code %></b></p>
+    <form method="post" action="/system/workspaces/<%= ws.id %>/new-code"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn" type="submit" onclick="return confirm('Make a new code? The old one stops working.')">Make a new code</button></form>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

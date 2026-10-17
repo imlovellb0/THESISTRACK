@@ -1,0 +1,67 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Users</h1></div>
+<div class="layout">
+<div class="userlists">
+  <label class="field filterbar"><span>Search all lists</span><input type="search" data-filter=".usertable" placeholder="Type a name, email or role"></label>
+  <form id="bulkform" class="bulkbar" method="post" action="/admin/users/bulk" hidden>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <b id="bulkcount">0 accounts selected</b>
+    <button class="btn sm" type="submit" name="action" value="activate">Activate</button>
+    <button class="btn sm" type="submit" name="action" value="deactivate">Deactivate</button>
+    <button class="btn sm bad" type="submit" name="action" value="remove">Remove</button>
+  </form>
+  <% [['admin','Coordinators'],['adviser','Advisers'],['student','Students'],['panel','Panel members']].forEach(([role, label]) => {
+       const list = users.filter(u => u.role === role); if (!list.length) return; %>
+  <section class="card" data-selscope>
+    <header><h2><%= label %> <span class="pill"><%= list.length %></span></h2>
+      <% if (role !== 'admin') { %><span class="row selbar seltool"><button class="btn sm selbtn" type="button" aria-pressed="false">Select</button><button class="btn sm selallbtn" type="button" hidden>Select all</button></span><% } %></header>
+    <div class="tablewrap"><table class="usertable">
+      <thead><tr><th class="selcol"><% if (role !== 'admin') { %><input type="checkbox" class="selall" aria-label="Select all in this list"><% } %></th><th>Name</th><% if (role === 'student') { %><th>Student ID no.</th><th>ID photo</th><% } %><th>Email</th><th></th></tr></thead>
+      <tbody>
+      <% list.forEach(u => { %>
+        <tr>
+          <td class="selcol"><% if (role !== 'admin' && u.id !== user.id) { %><input type="checkbox" name="ids" value="<%= u.id %>" form="bulkform" aria-label="Select <%= u.name %>"><% } %></td>
+          <td><span class="row nowrap"><% if (u.role !== 'panel') { %><%- include('../partials/avatar', { u: u, size: 'sm' }) %><% } %><span><%= u.name %><% if (!u.active) { %> <span class="pill">Inactive</span><% } %></span></span></td>
+          <% if (role === 'student') { %>
+          <td class="mono"><%= u.student_no || '' %></td>
+          <td><% if (u.id_photo) { %><a href="/id-photo/<%= u.id %>" target="_blank" rel="noopener"><img class="idthumb" src="/id-photo/<%= u.id %>" alt="ID photo of <%= u.name %>"></a><% } else if (u.role === 'student') { %><span class="muted small">None</span><% } %></td>
+          <% } %>
+          <td class="mono"><%= u.email %></td>
+          <td>
+            <% if (u.id !== user.id) { %>
+            <div class="rowbtns">
+            <form method="post" action="/admin/users/<%= u.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="btn sm" type="submit"><%= u.active ? 'Deactivate' : 'Activate' %></button></form>
+            </div>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  </section>
+  <% }) %>
+</div>
+
+<section class="card">
+  <header><h2>Add a user</h2></header>
+  <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+  <form class="stack" method="post" action="/admin/users">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" required></label>
+    <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" required></label>
+    <label class="field"><span>Student ID number <span class="hint">(students only, optional)</span></span><input type="text" name="student_no" value="<%= form.student_no || '' %>" maxlength="30"></label>
+    <label class="field"><span>Role</span>
+      <select name="role">
+        <% [['student','Student'],['panel','Panel member']].forEach(([v, l]) => { %>
+          <option value="<%= v %>" <%= form.role === v ? 'selected' : '' %>><%= l %></option>
+        <% }) %>
+      </select></label>
+    <label class="field"><span>Starting password <span class="hint">(at least 8 characters; not needed for panel members, who do not sign in)</span></span><input type="password" name="password" minlength="8" autocomplete="new-password"></label>
+    <button class="btn primary" type="submit">Add user</button>
+  </form>
+</section>
+</div>
+<script src="/static/filter.js"></script>
+<script src="/static/bulk.js"></script>
+<%- include('../partials/footer') %>

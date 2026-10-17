@@ -1,0 +1,33 @@
+{
+  "name": "thesistrack",
+  "version": "1.0.0",
+  "description": "Web-based thesis management system with progress tracking and document routing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed.js --reset",
+    "test": "node scripts/smoke-test.js",
+    "test:workspaces": "node scripts/workspace-test.js",
+    "test:groups": "node scripts/group-test.js",
+    "test:system": "node scripts/system-test.js",
+    "test:messages": "node scripts/messages-test.js",
+    "backup": "node scripts/backup.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "ejs": "^7.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "mammoth": "^1.13.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.5",
+    "nodemailer": "^10.0.15",
+    "pdf-parse": "^2.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

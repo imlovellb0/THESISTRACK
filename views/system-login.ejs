@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+    <h1>System sign in</h1>
+    <form class="stack" method="post" action="/system/login">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Email</span><input type="email" name="email" autocomplete="username" required autofocus></label>
+      <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Sign in</button>
+    </form>
+  </section>
+</div>
+<%- include('partials/footer') %>

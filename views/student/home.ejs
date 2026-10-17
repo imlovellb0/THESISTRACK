@@ -1,0 +1,59 @@
+<%- include('../partials/header') %>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <div class="profilehead">
+      <%- include('../partials/avatar', { u: me, size: 'lg' }) %>
+      <div>
+        <span class="label">Welcome</span>
+        <h1 style="margin:2px 0 4px"><%= me.name %></h1>
+        <div class="small">Student ID <b class="mono"><%= me.student_no || 'not recorded' %></b></div>
+        <div class="small muted"><%= me.email %><% if (workspace) { %> · <%= workspace.name %><% } %></div>
+        <div class="row" style="margin-top:8px"><a class="btn sm" href="/profile"><%= me.avatar ? 'Change photo' : 'Add a profile photo' %></a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <header><h2>Get started with your thesis</h2></header>
+    <p class="muted small">You are not in a thesis group yet. Create a new group, or join the one your teammates already made.</p>
+    <div class="choices">
+      <div class="choice">
+        <b>Create a group</b>
+        <span class="small muted">Start a new group, choose its name and thesis title, and invite your teammates. You become the group leader.</span>
+        <a class="btn primary" href="/student/group/new">Create a group</a>
+      </div>
+      <div class="choice">
+        <b>Join a group</b>
+        <span class="small muted">Enter the join code your group leader shared with you.</span>
+        <form class="row" method="post" action="/student/group/join">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="text" name="code" maxlength="10" placeholder="K7M2QX" autocomplete="off" autocapitalize="characters" required style="width:8rem;text-transform:uppercase">
+          <button class="btn primary" type="submit">Join</button>
+        </form>
+        <span class="small muted">Or ask the leader to add your email (<span class="mono"><%= me.email %></span>).</span>
+      </div>
+    </div>
+  </section>
+</div>
+<aside class="col">
+  <section class="card">
+    <header><h2>Your first steps</h2></header>
+    <%- include('../partials/checklist', { steps }) %>
+  </section>
+  <% if (coordinator) { %>
+  <section class="card">
+    <header><h2>Your coordinator</h2></header>
+    <div class="row"><%- include('../partials/avatar', { u: coordinator, size: 'sm' }) %><b><%= coordinator.name %></b></div>
+  </section>
+  <% } %>
+  <section class="card">
+    <header><h2>Announcements</h2></header>
+    <% if (!notices.length) { %><p class="muted small">Nothing posted yet.</p><% } %>
+    <ul class="list">
+      <% notices.forEach(n => { %><li><b><%= n.title %></b><span class="small"><%= n.body %></span><span class="small muted"><%= L.fmtDate(n.created_at) %></span></li><% }) %>
+    </ul>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

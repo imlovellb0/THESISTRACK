@@ -1,0 +1,70 @@
+<%- include('partials/header') %>
+<div class="pagehead"><h1>Messages</h1></div>
+<div class="msgs <%= current ? 'open' : '' %>">
+<aside class="card msglist">
+  <% if (starters) { %>
+  <form class="stack" method="post" action="/messages/start">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Start a message to</span>
+      <select name="target" required>
+        <option value="" disabled selected>Choose a group or a person</option>
+        <% if (starters.groups.length) { %><optgroup label="Groups"><% starters.groups.forEach(g => { %><option value="group:<%= g.id %>"><%= g.name %></option><% }) %></optgroup><% } %>
+        <% ['adviser', 'student'].forEach(r => { const ps = starters.people.filter(p => p.role === r); if (ps.length) { %>
+          <optgroup label="<%= L.ROLE_LABEL[r] %>s"><% ps.forEach(p => { %><option value="user:<%= p.id %>"><%= p.name %></option><% }) %></optgroup>
+        <% } }) %>
+      </select></label>
+    <button class="btn" type="submit">Open</button>
+  </form>
+  <% } %>
+  <ul class="list threads">
+    <% threads.forEach(t => { %>
+      <li>
+        <a class="thread <%= current && current.id === t.id ? 'on' : '' %>" href="/messages/<%= t.id %>">
+          <span class="row"><b><%= titleOf(t) %></b>
+            <span class="pill <%= t.kind === 'group' ? 'info' : '' %>"><%= t.kind === 'group' ? 'Group' : 'Private' %></span>
+            <% if (t.unread) { %><span class="badge" title="Unread messages">New</span><% } %></span>
+          <span class="small muted preview"><%= t.last_body || (t.total ? 'Hidden message' : 'No messages yet') %></span>
+        </a>
+      </li>
+    <% }) %>
+    <% if (!threads.length) { %><li class="muted small">No conversations yet.<% if (starters) { %> Start one above.<% } %></li><% } %>
+  </ul>
+</aside>
+
+<section class="card msgthread">
+  <% if (!current) { %>
+    <p class="muted">Choose a conversation on the left.</p>
+  <% } else { %>
+  <header>
+    <h2><a class="backlink small" href="/messages">&larr; All</a> <%= titleOf(current) %></h2>
+  </header>
+  <p class="small muted">
+    <% if (current.kind === 'group') { %>Everyone in this group, the adviser and the coordinator can read this thread.
+    <% } else if (user.role === 'admin') { %>A private thread with this person. Every coordinator of your workspace can read it.
+    <% } else { %>Private: only you and the coordinator can read this thread.<% } %>
+  </p>
+  <div id="thread" class="thread-body" aria-live="polite"
+    data-poll="/messages/<%= current.id %>/poll" data-last="<%= lastId %>" data-admin="<%= user.role === 'admin' ? '1' : '' %>"
+    data-hide="/messages/<%= current.id %>/hide/" data-csrf="<%= csrf %>">
+    <% if (!items.length) { %><p class="muted small" id="emptynote">No messages yet. Say hello.</p><% } %>
+    <% items.forEach(m => { %>
+      <div class="msg <%= m.mine ? 'mine' : '' %> <%= m.hidden ? 'hidden-msg' : '' %>" data-id="<%= m.id %>">
+        <div class="meta"><b><%= m.sender %></b> <span class="muted"><%= m.role %><%= m.role ? ' · ' : '' %><%= m.when %></span><% if (m.hidden) { %> <span class="pill bad">Hidden</span><% } %></div>
+        <div class="body"><%= m.body %></div>
+        <% if (user.role === 'admin') { %>
+        <form method="post" action="/messages/<%= current.id %>/hide/<%= m.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit"><%= m.hidden ? 'Show again' : 'Hide' %></button></form>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+  <form class="stack sendform" method="post" action="/messages/<%= current.id %>/send">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span class="small muted">Message <span class="hint">(Ctrl+Enter sends)</span></span>
+      <textarea name="body" rows="3" maxlength="<%= MAX %>" required></textarea></label>
+    <div><button class="btn primary" type="submit">Send</button></div>
+  </form>
+  <% } %>
+</section>
+</div>
+<% if (current) { %><script src="/static/messages.js"></script><% } %>
+<%- include('partials/footer') %>

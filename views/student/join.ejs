@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<div class="authwrap" style="margin-top:2vh">
+  <section class="card">
+    <h1>Join <%= g.name %>?</h1>
+    <p class="muted"><%= g.title %></p>
+    <p class="small">Led by <b><%= leader %></b> · <%= count %> member<%= count === 1 ? '' : 's' %></p>
+    <% if (full) { %>
+      <div class="flash error">This group is full. Ask the leader to make room.</div>
+      <a class="btn" href="/student">Back</a>
+    <% } else { %>
+      <form class="row" method="post" action="/student/group/join">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <input type="hidden" name="code" value="<%= code %>">
+        <button class="btn primary" type="submit">Join this group</button>
+        <a class="btn" href="/student">Not now</a>
+      </form>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/footer') %>

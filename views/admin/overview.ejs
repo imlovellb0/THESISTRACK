@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Overview</h1></div>
+<div class="stats">
+  <div class="stat"><b><%= counts.groups %></b><span>Thesis groups</span></div>
+  <div class="stat"><b><%= counts.onTrack %></b><span>On track</span></div>
+  <div class="stat"><b><%= counts.delayed %></b><span>Delayed</span></div>
+  <div class="stat"><b><%= counts.completed %></b><span>Completed</span></div>
+  <div class="stat"><b><%= counts.users %></b><span>Users</span></div>
+</div>
+<% if (workspace) { %>
+<section class="card">
+  <header><h2>Invite your students</h2><span class="small muted"><%= workspace.name %></span></header>
+  <p>Give students this join code. They need it to create an account, and it places them in your workspace only.</p>
+  <p><b class="mono" style="font-size:1.6rem;letter-spacing:.15em"><%= workspace.join_code %></b></p>
+  <p class="small muted">Or share the link: <span class="mono"><%= joinLink %></span><br>Advisers are added from the <a href="/admin/advisers">Advisers</a> page, which sends them an invitation code.</p>
+</section>
+<% } %>
+<% if (noAdviser) { %><div class="flash warn"><%= noAdviser %> group<%= noAdviser === 1 ? ' has' : 's have' %> no adviser. <a href="/admin/groups">Assign advisers</a>.</div><% } %>
+
+<section class="card">
+  <header><h2>Where every group stands</h2><span class="small muted">One block per chapter</span></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Group</th><th>Chapters</th><th>Why</th><th>Health</th></tr></thead>
+    <tbody>
+    <% groups.forEach(g => { %>
+      <tr>
+        <td><a href="/admin/groups/<%= g.id %>"><b><%= g.name %></b></a><br><span class="small muted"><%= g.adviser_name || 'No adviser' %></span></td>
+        <td><%- L.strip(g.chapters) %></td>
+        <td class="small"><% if (g.overdue) { %>Chapter <%= g.overdue.number %> was due <%= L.fmtDate(g.overdue.deadline) %> (<%= L.STATUS[g.overdue.status].label.toLowerCase() %>)<% } else if (g.health === 'completed') { %>All chapters approved<% } else { %>Nothing overdue<% } %></td>
+        <td><%- L.hpill(g.health) %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <div class="row small muted"><span class="pill good">Approved</span><span class="pill info">Pending review</span><span class="pill warn">For revision</span><span class="pill bad">Rejected</span><span class="pill">Not submitted</span></div>
+</section>
+
+<section class="card">
+  <header><h2>Recent activity</h2></header>
+  <ul class="list log">
+    <% activity.forEach(a => { %><li><span><b><%= a.name || 'System' %></b> <%= a.action %></span><span class="small muted"><%= L.fmtDateTime(a.created_at) %></span></li><% }) %>
+  </ul>
+</section>
+<%- include('../partials/footer') %>

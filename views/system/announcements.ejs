@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Announcements</h1><span class="muted small">Notices from the system administrator, shown on each chosen workspace&rsquo;s board.</span></div>
+<div class="layout">
+<section class="card">
+  <header><h2>Sent</h2></header>
+  <% if (!items.length) { %><p class="muted">Nothing sent yet.</p><% } %>
+  <ul class="list">
+    <% items.forEach(n => { %>
+      <li><b><%= n.title %></b><span class="small"><%= n.body %></span>
+        <span class="row small muted"><%= L.fmtDate(n.created_at) %> &middot; <%= n.workspace_count %> workspace<%= n.workspace_count === 1 ? '' : 's' %>
+          <form method="post" action="/system/announcements/<%= n.broadcast_id %>/delete"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Remove this announcement from every workspace?')">Remove</button></form></span></li>
+    <% }) %>
+  </ul>
+</section>
+<section class="card">
+  <header><h2>Send an announcement</h2></header>
+  <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+  <form class="stack" method="post" action="/system/announcements">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Title</span><input type="text" name="title" value="<%= form.title || '' %>" maxlength="200" required></label>
+    <label class="field"><span>Message</span><textarea name="body" maxlength="5000" rows="5" required><%= form.body || '' %></textarea></label>
+    <label class="field"><span>Send to</span><select name="workspace"><option value="all">Every workspace</option>
+      <% workspaces.forEach(w => { %><option value="<%= w.id %>" <%= String(w.id) === form.workspace ? 'selected' : '' %>><%= w.name %></option><% }) %></select></label>
+    <fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="small">Who gets a notification <span class="hint">(none ticked means everyone)</span></legend>
+      <% [['student','Students'],['adviser','Advisers'],['admin','Coordinators']].forEach(([v, l]) => { %>
+        <label class="check"><input type="checkbox" name="roles" value="<%= v %>" <%= (form.roles || []).includes(v) ? 'checked' : '' %>> <%= l %></label>
+      <% }) %>
+    </fieldset>
+    <button class="btn primary" type="submit">Send</button>
+  </form>
+</section>
+</div>
+<%- include('../partials/footer') %>

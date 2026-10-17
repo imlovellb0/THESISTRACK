@@ -1,0 +1,58 @@
+<%- include('partials/header') %>
+<div>
+  <div class="crumbs"><%= sub.group_name %> / Chapter <%= sub.chapter_no %> / v<%= sub.version_no %></div>
+  <div class="pagehead"><h1>AI check</h1><span class="muted small"><%= sub.original_name %></span></div>
+</div>
+<% if (typeof error !== 'undefined') { %><div class="flash error" role="alert"><%= error %></div><% } %>
+
+<div class="two">
+  <section class="card">
+    <header><h2>Plagiarism check</h2></header>
+    <p class="small muted">Compares this file with the latest uploads of other groups in ThesisTrack. It does not search the internet, so it cannot catch text copied from websites or books. It runs on this server, so nothing is sent to an AI service.</p>
+    <form method="post" action="/ai/submission/<%= sub.id %>/plagiarism"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn primary" type="submit">Check similarity</button></form>
+  </section>
+  <section class="card">
+    <header><h2>Grammar suggestions</h2></header>
+    <p class="small muted">An AI proofreads about 1,200 words at a time. Suggestions are only advice: check each one before you use it.</p>
+    <% if (!aiOn) { %><p class="small">The AI is not switched on. The coordinator can add a free key (see AI-SETUP.md).</p><% } else { %>
+    <% const has = typeof grammar !== 'undefined'; const total = has ? grammar.parts : (typeof parts !== 'undefined' && parts ? parts : 1); %>
+    <form class="stack" method="post" action="/ai/submission/<%= sub.id %>/grammar"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Part of the chapter</span>
+        <select name="part"><% for (let i = 1; i <= total; i++) { %><option value="<%= i %>" <%= has && i === grammar.part ? 'selected' : '' %>>Part <%= i %> of <%= total %></option><% } %></select></label>
+      <button class="btn primary" type="submit">Check grammar</button></form>
+    <p class="small muted">The text of this part is sent to the AI service. Do not use this on work that must stay private.</p>
+    <% } %>
+  </section>
+</div>
+
+<% if (typeof plag !== 'undefined') { %>
+<section class="card">
+  <header><h2>Similarity result</h2></header>
+  <p><b><%= plag.percent %>%</b> of this chapter's wording also appears in other groups' work
+    <% if (plag.percent >= 25) { %><span class="pill bad">High</span><% } else if (plag.percent >= 10) { %><span class="pill warn">Check</span><% } else { %><span class="pill good">Low</span><% } %></p>
+  <p class="small muted">Compared with <%= plag.compared %> file<%= plag.compared === 1 ? '' : 's' %> from other groups<%= plag.skipped ? ' (' + plag.skipped + ' could not be read)' : '' %>. A match is 6 or more words in a row. Common phrases can match by chance, so a person must judge the result.</p>
+  <% if (plag.sources.length) { %>
+    <h3>Closest files</h3>
+    <ul class="list"><% plag.sources.forEach(s => { %><li><span><%= showNames ? s.group + ', ' : 'Another group, ' %>Chapter <%= s.chapter %></span><span class="small muted"><%= s.percent %>% shared</span></li><% }) %></ul>
+  <% } %>
+  <% if (plag.sentences.length) { %>
+    <h3>Passages that match</h3>
+    <ul class="quotes"><% plag.sentences.forEach(t => { %><li><%= t %></li><% }) %></ul>
+  <% } else { %><p class="muted small">No matching passages found.</p><% } %>
+</section>
+<% } %>
+
+<% if (typeof grammar !== 'undefined') { %>
+<section class="card">
+  <header><h2>Grammar suggestions, part <%= grammar.part %> of <%= grammar.parts %></h2></header>
+  <% if (!grammar.issues.length) { %><p class="muted">No problems found in this part.</p><% } %>
+  <% grammar.issues.forEach(i => { %>
+    <div class="fix">
+      <div><span class="was"><%= i.original %></span> → <span class="now"><%= i.suggestion %></span></div>
+      <% if (i.reason) { %><div class="small muted"><%= i.reason %></div><% } %>
+    </div>
+  <% }) %>
+</section>
+<% } %>
+<%- include('partials/footer') %>

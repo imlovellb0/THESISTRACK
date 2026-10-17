@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>System</h1><span class="muted small">Site settings, health and clean-up</span></div>
+<div class="layout">
+<div class="col">
+  <section class="card">
+    <header><h2>Coordinator sign-up</h2></header>
+    <form class="stack" method="post" action="/system/settings"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="check"><input type="checkbox" name="coordinator_signup" value="on" <%= signupOpen ? 'checked' : '' %>>
+        <span>Accept coordinator invitation codes on the sign-up page<br><span class="small muted">Teachers can only open a workspace with a code from you. Turn this off to pause every invitation at once, for example if a code leaks. You can still create coordinators yourself.</span></span></label>
+      <button class="btn primary" type="submit">Save</button>
+    </form>
+  </section>
+  <section class="card">
+    <header><h2>Clean-up</h2></header>
+    <p class="small muted">Removes records nobody needs any more. Thesis files and accounts are never touched.</p>
+    <% [['sessions', 'Expired sign-in sessions', junk.sessions], ['resets', 'Used or expired password reset links', junk.resets], ['invites', 'Cancelled or expired invitations', junk.invites], ['notifications', 'Read notifications older than 90 days', junk.notifications]].forEach(([k, label, n]) => { %>
+      <form class="row" method="post" action="/system/cleanup/<%= k %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+        <span style="flex:1"><%= label %>: <b><%= n %></b></span>
+        <button class="btn sm" type="submit" <%= n ? '' : 'disabled' %>>Clear</button></form>
+    <% }) %>
+  </section>
+</div>
+<aside class="col">
+  <section class="card">
+    <header><h2>Server</h2></header>
+    <ul class="list small"><% info.forEach(([k, v]) => { %><li><span class="muted"><%= k %></span><%= v %></li><% }) %></ul>
+  </section>
+  <section class="card">
+    <header><h2>Records</h2></header>
+    <ul class="list small"><% tables.filter(Boolean).forEach(([k, v]) => { %><li><span class="muted"><%= k %></span><%= v %></li><% }) %></ul>
+    <p class="small muted">Back up the database and uploads with <span class="mono">npm run backup</span>.</p>
+  </section>
+</aside>
+</div>
+<%- include('../partials/footer') %>

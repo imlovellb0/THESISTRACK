@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+<% const qs = (p) => `?q=${encodeURIComponent(q)}&workspace=${workspace}&from=${from}&to=${to}&page=${p}`; %>
+<div class="pagehead"><h1>Activity log</h1><span class="muted small"><%= total %> record<%= total === 1 ? '' : 's' %>, all workspaces</span></div>
+<section class="card">
+  <form class="filterbar" method="get" action="/system/audit">
+    <label class="field"><span>Search</span><input type="search" name="q" value="<%= q %>" placeholder="Name or action, for example approved"></label>
+    <label class="field" style="min-width:11rem;flex:0"><span>Workspace</span><select name="workspace"><option value="">All</option><option value="none" <%= workspace === 'none' ? 'selected' : '' %>>System</option>
+      <% workspaces.forEach(w => { %><option value="<%= w.id %>" <%= String(w.id) === workspace ? 'selected' : '' %>><%= w.name %></option><% }) %></select></label>
+    <label class="field" style="min-width:9rem;flex:0"><span>From</span><input type="date" name="from" value="<%= from %>"></label>
+    <label class="field" style="min-width:9rem;flex:0"><span>To</span><input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn" href="/system/audit.csv<%= qs(1) %>">Download CSV</a>
+  </form>
+  <div class="tablewrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Workspace</th><th>Action</th></tr></thead>
+    <tbody>
+    <% rows.forEach(r => { %>
+      <tr><td class="mono"><%= r.created_at %></td><td><%= r.name || 'System' %></td><td><%= r.workspace_name || '' %></td><td><%= r.action %></td></tr>
+    <% }) %>
+    <% if (!rows.length) { %><tr><td colspan="4" class="muted">No matching records.</td></tr><% } %>
+    </tbody>
+  </table></div>
+  <% if (pages > 1) { %>
+  <p class="small">
+    <% if (page > 1) { %><a href="<%= qs(page - 1) %>">&larr; Newer</a><% } %>
+    Page <%= page %> of <%= pages %>
+    <% if (page < pages) { %><a href="<%= qs(page + 1) %>">Older &rarr;</a><% } %>
+  </p>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

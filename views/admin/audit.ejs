@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<% const qs = (p) => `?q=${encodeURIComponent(q)}&from=${from}&to=${to}&page=${p}`; %>
+<div class="pagehead"><h1>Activity log</h1><span class="muted small"><%= total %> record<%= total === 1 ? '' : 's' %></span></div>
+<section class="card">
+  <form class="filterbar" method="get" action="/admin/audit">
+    <label class="field"><span>Search</span><input type="search" name="q" value="<%= q %>" placeholder="Name or action, for example approved"></label>
+    <label class="field" style="min-width:9rem;flex:0"><span>From</span><input type="date" name="from" value="<%= from %>"></label>
+    <label class="field" style="min-width:9rem;flex:0"><span>To</span><input type="date" name="to" value="<%= to %>"></label>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn" href="/admin/audit.csv<%= qs(1) %>">Download CSV</a>
+  </form>
+  <div class="tablewrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th></tr></thead>
+    <tbody>
+    <% rows.forEach(r => { %>
+      <tr><td class="mono"><%= r.created_at %></td><td><%= r.name || 'System' %></td><td><%= r.action %></td></tr>
+    <% }) %>
+    <% if (!rows.length) { %><tr><td colspan="3" class="muted">No matching records.</td></tr><% } %>
+    </tbody>
+  </table></div>
+  <% if (pages > 1) { %>
+  <p class="small">
+    <% if (page > 1) { %><a href="<%= qs(page - 1) %>">&larr; Newer</a><% } %>
+    Page <%= page %> of <%= pages %>
+    <% if (page < pages) { %><a href="<%= qs(page + 1) %>">Older &rarr;</a><% } %>
+  </p>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

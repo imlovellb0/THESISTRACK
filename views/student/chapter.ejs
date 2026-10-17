@@ -1,0 +1,60 @@
+<%- include('../partials/header') %>
+<div>
+  <div class="crumbs"><a href="/student">My thesis</a> / Chapter <%= c.number %></div>
+  <div class="pagehead"><h1>Chapter <%= c.number %>: <%= L.CH_NAMES[c.number - 1] %></h1><%- L.pill(c.status) %></div>
+  <p class="muted small">Deadline <%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></p>
+</div>
+
+<div class="two">
+  <section class="card">
+    <header><h2>Upload</h2></header>
+    <% if (canUpload) { %>
+      <form class="stack" method="post" action="/student/chapter/<%= c.number %>/upload" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="field"><span>PDF, DOC or DOCX, up to 10 MB</span><input type="file" name="file" accept=".pdf,.doc,.docx" required></label>
+        <button class="btn primary" type="submit">Upload as version <%= versions.length + 1 %></button>
+      </form>
+      <p class="small muted">Your adviser is notified as soon as the upload finishes.</p>
+    <% } else if (c.status === 'approved') { %>
+      <p class="muted">This chapter is approved and locked.</p>
+    <% } else { %>
+      <p class="muted">Your adviser is reviewing the latest version. You can upload again if it comes back for revision.</p>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <header><h2>Version history</h2></header>
+    <% if (!versions.length) { %><p class="muted small">Nothing uploaded yet.</p><% } %>
+    <ul class="list">
+      <% versions.forEach(v => { %>
+        <li><span class="mono">v<%= v.version_no %> · <a href="/files/<%= v.id %>"><%= v.original_name %></a></span>
+          <span class="small muted">Uploaded <%= L.fmtDateTime(v.uploaded_at) %> by <%= v.by_name %> &middot; <a class="small" href="/ai/submission/<%= v.id %>">AI check</a></span></li>
+      <% }) %>
+    </ul>
+  </section>
+</div>
+
+<details class="card guide">
+  <summary><b>What Chapter <%= c.number %> usually contains</b> <span class="small muted">(a general outline, your adviser's format comes first)</span></summary>
+  <ul>
+    <% guide.forEach(item => { %><li><%= item %></li><% }) %>
+  </ul>
+</details>
+
+<section class="card">
+  <header><h2>Adviser feedback</h2></header>
+  <% if (!comments.length) { %><p class="muted small">No comments on this chapter.</p><% } %>
+  <div class="thread">
+    <% comments.forEach(m => { %>
+      <div class="msg <%= m.resolved ? 'done' : '' %>">
+        <div class="meta"><%= m.author %> · <%= L.fmtDateTime(m.created_at) %><%= m.resolved ? ' · resolved' : '' %></div>
+        <div><%= m.body %></div>
+        <form method="post" action="/student/comments/<%= m.id %>/resolve">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="linkbtn small" type="submit"><%= m.resolved ? 'Reopen' : 'Mark resolved' %></button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</section>
+<%- include('../partials/footer') %>

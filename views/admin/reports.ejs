@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Thesis status report</h1>
+  <div class="row noprint"><a class="btn" href="/admin/reports.csv">Download CSV</a><button class="btn" type="button" onclick="window.print()">Print</button></div></div>
+<p class="muted small">As of <%= L.fmtDate(L.today()) %></p>
+<section class="card">
+  <div class="tablewrap"><table>
+    <thead><tr><th>Group</th><th>Title</th><th>Adviser</th><th class="num">Approved</th><th class="num">Pending</th><th>Defense</th><th>Status</th></tr></thead>
+    <tbody>
+    <% groups.forEach(g => { %>
+      <tr>
+        <td><b><%= g.name %></b></td><td><%= g.title %></td><td><%= g.adviser_name || '' %></td>
+        <td class="num"><%= g.approved %>/5</td><td class="num"><%= g.pending %></td>
+        <td><%= g.defense_date ? L.fmtDate(g.defense_date) : '' %></td>
+        <td><%- L.hpill(g.health) %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('../partials/footer') %>

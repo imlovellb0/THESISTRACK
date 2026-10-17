@@ -1,0 +1,82 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Workspaces</h1><span class="muted small">One workspace per coordinator. Their people and data are separate from every other workspace.</span></div>
+<div class="layout">
+<div class="col">
+<section class="card">
+  <label class="field filterbar"><span>Search this list</span><input type="search" data-filter="#wstable" placeholder="Type a workspace name or code"></label>
+  <div class="tablewrap"><table id="wstable">
+    <thead><tr><th>Workspace</th><th>Join code</th><th class="num">Coord.</th><th class="num">Advisers</th><th class="num">Students</th><th class="num">Groups</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    <% workspaces.forEach(w => { %>
+      <tr>
+        <td><b><%= w.name %></b><br><span class="small muted">Created <%= L.fmtDate(w.created_at) %></span></td>
+        <td class="mono"><%= w.join_code %></td>
+        <td class="num"><%= w.coordinators %></td><td class="num"><%= w.advisers %></td><td class="num"><%= w.students %></td><td class="num"><%= w.group_count %></td>
+        <td><span class="pill <%= w.active ? 'good' : 'bad' %>"><%= w.active ? 'Active' : 'Suspended' %></span></td>
+        <td><a class="btn sm" href="/system/workspaces/<%= w.id %>">Manage</a></td>
+      </tr>
+    <% }) %>
+    <% if (!workspaces.length) { %><tr><td colspan="8" class="muted">No workspaces yet.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+<section class="card">
+  <header><h2>Coordinator invitations</h2></header>
+  <p class="small muted">A teacher can only open a workspace with a code from you. Each code works once, for one email address, for <%= ttlDays %> days.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Invited</th><th></th></tr></thead>
+    <tbody>
+    <% invites.forEach(i => { %>
+      <tr>
+        <td><%= i.name %></td>
+        <td class="mono"><%= i.email %></td>
+        <td><% if (i.status === 'Registered') { %><span class="pill good">Registered</span>
+            <% } else if (i.status === 'Cancelled') { %><span class="pill">Cancelled</span>
+            <% } else if (i.expired) { %><span class="pill warn">Code expired</span>
+            <% } else { %><span class="pill info">Invited</span><% } %></td>
+        <td class="small"><%= L.fmtDateTime(i.created_at) %></td>
+        <td>
+          <% if (i.status === 'Invited') { %>
+          <div class="rowbtns">
+            <form method="post" action="/system/invitations/<%= i.id %>/resend"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Send a new code</button></form>
+            <form method="post" action="/system/invitations/<%= i.id %>/cancel"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Cancel</button></form>
+          </div>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!invites.length) { %><tr><td colspan="5" class="muted">No invitations yet. Invite a coordinator on the right.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+</div>
+<aside class="col">
+<section class="card">
+  <header><h2>Invite a coordinator</h2></header>
+  <% if (typeof error !== 'undefined' && errorIn === 'invite') { %><div class="flash error"><%= error %></div><% } %>
+  <form class="stack" method="post" action="/system/invitations">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Full name</span><input type="text" name="name" value="<%= inviteForm.name || '' %>" maxlength="255" required></label>
+    <label class="field"><span>Email <span class="hint">(they must open it to get the code)</span></span><input type="email" name="email" value="<%= inviteForm.email || '' %>" maxlength="190" required></label>
+    <button class="btn primary" type="submit">Send invitation</button>
+  </form>
+  <p class="small muted">They get a code by email, then open <a href="/register/coordinator">/register/coordinator</a>, enter their email and the code, name their workspace and choose a password.</p>
+  <% if (!mailReady) { %><p class="small"><span class="pill warn">Email not set up</span> The code is shown once on screen after you send, and saved in <span class="mono">outbox/mail.log</span>.</p><% } %>
+</section>
+<section class="card">
+  <header><h2>New workspace</h2></header>
+  <p class="small muted">Or create a workspace and its coordinator yourself, with a starting password.</p>
+  <% if (typeof error !== 'undefined' && errorIn === 'workspace') { %><div class="flash error"><%= error %></div><% } %>
+  <form class="stack" method="post" action="/system/workspaces">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Workspace name</span><input type="text" name="workspace" value="<%= form.workspace || '' %>" maxlength="120" placeholder="BSIT 4A Thesis, AY 2026-27" required></label>
+    <label class="field"><span>Coordinator&rsquo;s full name</span><input type="text" name="name" value="<%= form.name || '' %>" required></label>
+    <label class="field"><span>Coordinator&rsquo;s email</span><input type="email" name="email" value="<%= form.email || '' %>" required></label>
+    <label class="field"><span>Starting password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+    <button class="btn primary" type="submit">Create workspace</button>
+  </form>
+</section>
+</aside>
+</div>
+<script src="/static/filter.js"></script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Workspace</h1></div>
+
+<section class="card">
+  <header><h2><%= workspace.name %></h2></header>
+  <p>Students register with this join code:</p>
+  <p><b class="mono" style="font-size:1.6rem;letter-spacing:.15em"><%= workspace.join_code %></b></p>
+  <p class="small muted"><%= counts.students %> student<%= counts.students === 1 ? '' : 's' %>, <%= counts.advisers %> adviser<%= counts.advisers === 1 ? '' : 's' %>, <%= counts.groups %> group<%= counts.groups === 1 ? '' : 's' %>, <%= counts.files %> uploaded file<%= counts.files === 1 ? '' : 's' %>.</p>
+</section>
+
+<section class="card">
+  <header><h2>Delete this workspace</h2></header>
+  <div class="flash warn">This cannot be undone. It permanently deletes every student, adviser and panel member account (including ID photos), all groups, chapters, uploaded files, comments, consultations, announcements and the activity log of this workspace, and your own coordinator account.</div>
+  <p class="small">Before you delete, <a href="/admin/reports.csv">download the report</a> and keep a copy of anything you still need. Other coordinators' workspaces are not affected.</p>
+  <form class="stack" method="post" action="/admin/workspace/delete">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Type the workspace name to confirm: <b><%= workspace.name %></b></span><input type="text" name="confirm_name" autocomplete="off" required></label>
+    <label class="field"><span>Your password</span><input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="btn" type="submit" onclick="return confirm('Delete this workspace and all of its data permanently?')">Delete workspace permanently</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

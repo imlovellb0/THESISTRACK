@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>ThesisTrack</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<% const nav = {
+  student: [['/student', 'My thesis'], ['/messages', 'Messages'], ['/profile', 'Profile']],
+  adviser: [['/adviser', 'My groups'], ['/messages', 'Messages']],
+  admin: [['/admin', 'Overview'], ['/admin/users', 'Users'], ['/admin/groups', 'Groups'], ['/admin/advisers', 'Advisers'], ['/admin/panel', 'Panel members'], ['/admin/announcements', 'Announcements'], ['/messages', 'Messages'], ['/admin/reports', 'Reports'], ['/admin/audit', 'Activity log'], ['/admin/workspace', 'Workspace']],
+  superadmin: [['/system', 'Overview'], ['/system/workspaces', 'Workspaces'], ['/system/users', 'Users'], ['/system/groups', 'Groups'], ['/system/announcements', 'Announcements'], ['/system/audit', 'Activity log'], ['/system/settings', 'System']],
+}; %>
+<header class="topbar"><div class="topin">
+  <a class="brand" href="/">ThesisTrack</a>
+  <% if (user) { %>
+  <nav class="nav" aria-label="Main">
+    <% nav[user.role].forEach(([href, label]) => {
+         const on = (href === '/admin' || href === '/system') ? path === href
+           : href === '/student' ? (path === '/student' || (path.startsWith('/student/') && !path.startsWith('/student/profile')))
+           : (path === href || path.startsWith(href + '/')); %>
+      <a href="<%= href %>" <%- on ? 'aria-current="page"' : '' %>><%= label %><% if (href === '/messages' && unreadMsgs) { %> <span class="badge"><%= unreadMsgs %></span><% } %></a>
+    <% }) %>
+  </nav>
+  <div class="usernav">
+    <a class="bell" href="/notifications">Notifications <% if (unread) { %><span class="badge"><%= unread %></span><% } %></a>
+    <% if (typeof workspace !== 'undefined' && workspace) { %><span class="muted small" title="Your workspace"><%= workspace.name %></span><% } %>
+    <a class="muted" href="/profile" title="My profile"><%- include('avatar', { u: user, size: 'xs' }) %> <%= user.name %> · <%= L.ROLE_LABEL[user.role] %></a>
+    <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Sign out</button></form>
+  </div>
+  <% } %>
+</div></header>
+<main class="page">
+<% if (flash) { %><div class="flash <%= flash.type %>" role="status"><%= flash.msg %></div><% } %>
