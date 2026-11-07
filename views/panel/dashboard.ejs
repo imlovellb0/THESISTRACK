@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>My panels</h1><span class="muted small">Groups you sit on the defense panel for. You can read their work but not change it.</span></div>
+<div class="stats">
+  <a class="stat link" href="/panel"><b><%= groups.length %></b><span>Groups on my panel</span></a>
+  <a class="stat link" href="/panel?show=upcoming"><b><%= upcoming.length %></b><span>Upcoming defenses</span></a>
+</div>
+
+<section class="card">
+  <header><h2><%= filter ? 'Upcoming defenses' : 'Groups' %></h2><% if (filter) { %><a class="small" href="/panel">Show all groups</a><% } %></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Group</th><th>Defense</th><th>Progress</th><th>Health</th></tr></thead>
+    <tbody>
+    <% shown.forEach(g => { %>
+      <tr>
+        <td><a href="/panel/group/<%= g.id %>"><b><%= g.name %></b></a><br><span class="small muted"><%= g.title %></span><% if (L.classLabel(g)) { %><br><span class="small"><%= L.classLabel(g) %></span><% } %></td>
+        <td data-label="Defense"><% if (g.defense_date) { %><%= L.fmtDate(g.defense_date) %>, <%= g.defense_time %><br><span class="small muted">Room <%= g.room %></span><% } else { %><span class="muted">Not scheduled</span><% } %></td>
+        <td data-label="Progress"><%- L.bar(g.approved, g.chapters.length) %></td>
+        <td data-label="Health"><%- L.hpill(g.health) %></td>
+      </tr>
+    <% }) %>
+    <% if (!shown.length) { %><tr><td colspan="4" class="muted"><%= filter ? 'No defenses are coming up.' : 'You are not on any panel yet. The coordinator assigns panel members to groups.' %></td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('../partials/footer') %>

@@ -1,12 +1,10 @@
 # Turning on the AI features (free)
 
-ThesisTrack has three AI helpers. Two of them need a free AI key; the plagiarism check needs nothing.
+ThesisTrack has one AI helper, the grammar suggestions. It needs a free AI key.
 
 | Feature | Where | Needs a key? |
 | --- | --- | --- |
-| Plagiarism (similarity) check | "AI check" link next to every uploaded version (students, advisers, coordinator) | No. It runs on the server and compares with other groups' work. It does not search the internet. |
-| Grammar suggestions | Same "AI check" page | Yes |
-| Chatbot | "Ask AI" button at the bottom right of every page | Yes |
+| Grammar suggestions | "AI check" link next to every uploaded version (students, advisers, coordinator) | Yes |
 
 ## Option 1: Google Gemini free tier (easiest)
 1. Sign in at https://aistudio.google.com/apikey with any Google account and press **Create API key**. No credit card is needed.

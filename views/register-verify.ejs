@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+<%- include('partials/back', { href: '/register', label: 'Back' }) %>
+    <h1>Check your email</h1>
+    <p class="small muted">We sent a 6-digit code to <strong><%= email || 'your email address' %></strong>. It works for <%= minutes %> minutes. Your account is created once you enter it.</p>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/register/verify">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input type="hidden" name="email" value="<%= email %>">
+      <label class="field"><span>6-digit code</span><input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="123456" required autofocus></label>
+      <button class="btn primary" type="submit">Verify and create account</button>
+    </form>
+    <form method="post" action="/register/verify/resend" class="small">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input type="hidden" name="email" value="<%= email %>">
+      Did not get it? Check spam, or <button class="btn sm" type="submit">send a new code</button>
+    </form>
+    <p class="small">Wrong email? <a href="/register">Start again</a>.</p>
+  </section>
+</div>
+<%- include('partials/footer') %>

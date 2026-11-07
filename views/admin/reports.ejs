@@ -9,7 +9,7 @@
     <% groups.forEach(g => { %>
       <tr>
         <td><b><%= g.name %></b></td><td><%= g.title %></td><td><%= g.adviser_name || '' %></td>
-        <td class="num"><%= g.approved %>/5</td><td class="num"><%= g.pending %></td>
+        <td class="num"><%= g.approved %>/<%= g.chapters.length %></td><td class="num"><%= g.pending %></td>
         <td><%= g.defense_date ? L.fmtDate(g.defense_date) : '' %></td>
         <td><%- L.hpill(g.health) %></td>
       </tr>

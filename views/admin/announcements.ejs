@@ -7,8 +7,7 @@
   <ul class="list">
     <% items.forEach(n => { %>
       <li><b><%= n.title %></b><span class="small"><%= n.body %></span>
-        <span class="row small muted"><%= L.fmtDate(n.created_at) %>
-          <form method="post" action="/admin/announcements/<%= n.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit">Remove</button></form></span></li>
+        <span class="row small muted"><%= L.fmtDate(n.created_at) %></span></li>
     <% }) %>
   </ul>
 </section>

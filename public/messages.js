@@ -25,7 +25,14 @@
     meta.appendChild(document.createTextNode(' '));
     meta.appendChild(el('span', 'muted', (m.role ? m.role + ' · ' : '') + m.when));
     wrap.appendChild(meta);
-    wrap.appendChild(el('div', 'body', m.body));
+    if (m.body) wrap.appendChild(el('div', 'body', m.body));
+    if (m.file) {
+      var fd = el('div', 'body');
+      var a = el('a', null, '\uD83D\uDCCE ' + m.file);
+      a.href = box.getAttribute('data-poll').replace(/poll$/, 'file/') + m.id;
+      fd.appendChild(a);
+      wrap.appendChild(fd);
+    }
     if (box.getAttribute('data-admin')) {
       var f = el('form');
       f.method = 'post';

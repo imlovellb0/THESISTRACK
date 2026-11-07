@@ -1,7 +1,9 @@
 <%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/adviser', label: 'Back to my groups' }) %>
 <div>
   <div class="crumbs"><a href="/adviser">My groups</a> / <%= g.name %></div>
   <h1><%= g.title %></h1>
+  <% if (L.classLabel(g)) { %><p class="small muted">Class: <b><%= L.classLabel(g) %></b></p><% } %>
   <ul class="row" style="list-style:none;padding:0;margin:6px 0 0;gap:6px 16px">
     <% members.forEach(m => { %><li class="row small"><%- include('../partials/avatar', { u: m, size: 'sm' }) %><span><%= m.name %><% if (m.is_leader) { %> <span class="pill info">Leader</span><% } %></span></li><% }) %>
   </ul>
@@ -14,7 +16,7 @@
     <tbody>
     <% chapters.forEach(c => { %>
       <tr>
-        <td><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></td>
+        <td><%= c.number %>. <%= chNames[c.number - 1] %></td>
         <td data-label="Status"><%- L.pill(c.status) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
         <td class="mono" data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> <span class="muted">v<%= c.versions %></span><% } else { %>None<% } %></td>
         <td data-label="Deadline">
@@ -30,8 +32,51 @@
     </tbody>
   </table></div>
 </section>
+<section class="card" id="endorse">
+  <header><h2>Ready to defend</h2><%- L.readyPill(readiness) %></header>
+  <% if (g.endorsed_at) { %>
+    <p class="small">You endorsed this group for the defense on <%= L.fmtDateTime(g.endorsed_at) %>. The coordinator can now set the defense date.</p>
+    <% if (!g.defense_date) { %>
+    <form class="row" method="post" action="/adviser/group/<%= g.id %>/endorse/withdraw" onsubmit="return confirm('Withdraw the endorsement? The group and the coordinator are told.')">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input type="text" name="reason" maxlength="500" placeholder="Reason for withdrawing" aria-label="Reason for withdrawing" required>
+      <button class="btn sm bad" type="submit">Withdraw endorsement</button>
+    </form>
+    <% } %>
+  <% } else if (readiness === 'ready') { %>
+    <p class="small">All chapters are approved. Your endorsement is the final yes: the coordinator cannot set a defense date until you give it.</p>
+    <form method="post" action="/adviser/group/<%= g.id %>/endorse" onsubmit="return confirm('Endorse this group for the defense? The group and the coordinator are told.')">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn good" type="submit">Endorse for defense</button>
+    </form>
+  <% } else { %>
+    <p class="small muted">The group becomes ready to defend when every chapter is approved. Then you can endorse it for the defense.</p>
+  <% } %>
+</section>
 <section class="card">
   <header><h2>Defense</h2></header>
   <p class="small"><% if (g.defense_date) { %>Defense on <b><%= L.fmtDate(g.defense_date) %></b> at <%= g.defense_time %>, room <%= g.room %>.<% } else { %>Not scheduled yet.<% } %></p>
+</section>
+<section class="card" id="panel-results">
+  <header><h2>Defense results</h2>
+    <% if (result) { %><span class="pill <%= result.outcome === 'Passed' ? 'good' : result.outcome === 'Failed' ? 'bad' : 'warn' %>"><%= result.outcome %></span><% } %></header>
+  <% if (result) { %>
+    <p class="small"><b>Final outcome: <%= result.outcome %></b><%= result.average !== null ? ', average ' + result.average.toFixed(2) : '' %>. Released to the group <%= L.fmtDateTime(result.releasedAt) %>.</p>
+    <% if (result.note) { %><p class="small"><b>Coordinator's note:</b> <%= result.note %></p><% } %>
+  <% } else { %>
+    <p class="small muted">The coordinator has not released the final result to the group yet. The sheets the panel members have submitted are shown below.</p>
+  <% } %>
+  <% if (!panelSheets.length) { %><p class="muted small">No panel member has submitted a grade yet.</p><% } %>
+  <% panelSheets.forEach(s => { %>
+    <h3><%= s.panel_name %> <span class="small muted">· <%= s.outcome || 'no outcome' %> · submitted <%= L.fmtDateTime(s.submitted_at) %></span></h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Criterion</th><th class="num">Score</th><th class="num">Out of</th></tr></thead>
+      <tbody>
+        <% s.scores.forEach(r => { %><tr><td><%= r.title %></td><td class="num"><%= r.score === null ? '-' : Number(r.score) %></td><td class="num"><%= r.max_score %></td></tr><% }) %>
+        <tr><td><b>Total</b></td><td class="num"><b><%= Number(s.total) %></b></td><td class="num"><b><%= s.scores.reduce((a, r) => a + r.max_score, 0) %></b></td></tr>
+      </tbody>
+    </table></div>
+    <% if (s.remarks) { %><p class="small"><b>Remarks:</b> <%= s.remarks %></p><% } %>
+  <% }) %>
 </section>
 <%- include('../partials/footer') %>

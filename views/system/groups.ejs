@@ -13,12 +13,12 @@
     <tbody>
     <% groups.forEach(g => { %>
       <tr>
-        <td><b><%= g.name %></b><br><span class="small muted"><%= g.title %></span></td>
+        <td><b><%= g.name %></b><br><span class="small muted"><%= g.title %></span><% if (L.classLabel(g)) { %><br><span class="small"><%= L.classLabel(g) %></span><% } %></td>
         <td><a href="/system/workspaces/<%= g.workspace_id %>"><%= g.workspace_name %></a></td>
         <td><%= g.adviser_name || '' %><% if (!g.adviser_name) { %><span class="pill warn">Not assigned</span><% } %></td>
         <td class="num"><%= g.member_count %></td>
-        <td><%- L.bar(g.approved) %></td>
-        <td><%- L.hpill(g.health) %></td>
+        <td><%- L.bar(g.approved, g.chapters.length) %></td>
+        <td><%- L.hpill(g.health) %> <%- L.readyPill(g.readiness) %></td>
       </tr>
     <% }) %>
     <% if (!groups.length) { %><tr><td colspan="6" class="muted">No matching groups.</td></tr><% } %>

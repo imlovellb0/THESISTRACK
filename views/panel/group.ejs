@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/panel', label: 'Back to my panels' }) %>
+<div>
+  <div class="crumbs"><a href="/panel">My panels</a> / <%= g.name %></div>
+  <h1><%= g.title %></h1>
+  <% if (L.classLabel(g)) { %><p class="small muted">Class: <b><%= L.classLabel(g) %></b></p><% } %>
+  <ul class="row" style="list-style:none;padding:0;margin:6px 0 0;gap:6px 16px">
+    <% members.forEach(m => { %><li class="row small"><%- include('../partials/avatar', { u: m, size: 'sm' }) %><span><%= m.name %><% if (m.is_leader) { %> <span class="pill info">Leader</span><% } %></span></li><% }) %>
+  </ul>
+  <p class="small muted">Adviser: <%= g.adviser_name || 'Not assigned yet' %> &middot; Panel: <%= panel.map(p => p.name).join(', ') %></p>
+</div>
+
+<section class="card">
+  <header><h2>Defense</h2></header>
+  <p class="small"><% if (g.defense_date) { %>Defense on <b><%= L.fmtDate(g.defense_date) %></b> at <%= g.defense_time %>, room <%= g.room %>.<% } else { %>Not scheduled yet.<% } %></p>
+</section>
+
+<section class="card">
+  <header><h2>Chapters</h2></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Chapter</th><th>Status</th><th>Latest file</th><th>Deadline</th></tr></thead>
+    <tbody>
+    <% chapters.forEach(c => { %>
+      <tr>
+        <td><%= c.number %>. <%= chNames[c.number - 1] %></td>
+        <td data-label="Status"><%- L.pill(c.status) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
+        <td class="mono" data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> <span class="muted">v<%= c.versions %></span><% } else { %>None<% } %></td>
+        <td data-label="Deadline"><%= c.deadline ? L.fmtDate(c.deadline) : 'None' %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+
+<% const locked = sheet && sheet.status === 'Submitted'; const total = rows.reduce((a, r) => a + (Number(r.score) || 0), 0); const maxTotal = rows.reduce((a, r) => a + r.max, 0); %>
+<section class="card" id="grade">
+  <header><h2>Your grade</h2>
+    <% if (sheet) { %><span class="pill <%= sheet.status === 'Submitted' ? 'good' : sheet.status === 'Returned' ? 'warn' : 'info' %>"><%= sheet.status === 'Submitted' ? 'Submitted' : sheet.status === 'Returned' ? 'Returned to you' : 'Draft' %></span><% } %></header>
+  <% if (sheet && sheet.status === 'Returned' && sheet.return_note) { %><div class="flash error"><b>The coordinator returned your sheet.</b> <%= sheet.return_note %></div><% } %>
+  <% if (!canGrade && !sheet) { %>
+    <p class="small muted">Grading opens on the defense date<%= g.defense_date ? ' (' + L.fmtDate(g.defense_date) + ')' : ', once the coordinator schedules it' %>. Other panelists cannot see your scores.</p>
+  <% } else { %>
+  <p class="small muted">Only you and the coordinator see this sheet. Save a draft as often as you like; nothing is sent until you submit.<%= locked ? ' It is locked now. The coordinator can return it if it needs a change.' : '' %></p>
+  <form class="stack" method="post" action="/panel/group/<%= g.id %>/grade">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="tablewrap"><table>
+      <thead><tr><th>Criterion</th><th class="num">Score</th><th class="num">Out of</th></tr></thead>
+      <tbody>
+      <% rows.forEach(r => { %>
+        <tr><td><%= r.title %></td>
+          <td class="num"><input type="number" name="score" min="0" max="<%= r.max %>" step="0.5" value="<%= r.score === null ? '' : Number(r.score) %>" <%= locked ? 'disabled' : '' %> aria-label="Score for <%= r.title %>" style="width:6em"></td>
+          <td class="num"><%= r.max %></td></tr>
+      <% }) %>
+      <tr><td><b>Total</b></td><td class="num"><b id="gradetotal"><%= total %></b></td><td class="num"><b><%= maxTotal %></b></td></tr>
+      </tbody>
+    </table></div>
+    <label class="field"><span>Outcome</span>
+      <select name="outcome" <%= locked ? 'disabled' : '' %>>
+        <option value="">Choose an outcome</option>
+        <% L.OUTCOMES.forEach(o => { %><option <%= sheet && sheet.outcome === o ? 'selected' : '' %>><%= o %></option><% }) %>
+      </select></label>
+    <label class="field"><span>Remarks <span class="hint">(optional; the coordinator reads these)</span></span>
+      <textarea name="remarks" rows="3" maxlength="2000" <%= locked ? 'disabled' : '' %>><%= sheet && sheet.remarks ? sheet.remarks : '' %></textarea></label>
+    <% if (!locked) { %>
+    <div class="row">
+      <button class="btn" type="submit" name="action" value="save">Save draft</button>
+      <button class="btn primary" type="submit" name="action" value="submit" onclick="return confirm('Submit this grade to the coordinator? You cannot change it afterwards unless the coordinator returns it.')">Submit to coordinator</button>
+    </div>
+    <% } %>
+  </form>
+  <script>
+    (function () {
+      var t = document.getElementById('gradetotal');
+      var ins = document.querySelectorAll('#grade input[name="score"]');
+      function sum() { var s = 0; ins.forEach(function (i) { s += parseFloat(i.value) || 0; }); t.textContent = Math.round(s * 100) / 100; }
+      ins.forEach(function (i) { i.addEventListener('input', sum); });
+    })();
+  </script>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

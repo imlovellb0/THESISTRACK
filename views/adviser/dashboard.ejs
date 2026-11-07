@@ -1,10 +1,10 @@
 <%- include('../partials/header') %>
 <div class="pagehead"><h1>My groups</h1></div>
 <div class="stats">
-  <div class="stat"><b><%= groups.length %></b><span>Groups advised</span></div>
-  <div class="stat"><b><%= pending %></b><span>Pending reviews</span></div>
-  <div class="stat"><b><%= requests.length %></b><span>Consultation requests</span></div>
-  <div class="stat"><b><%= delayed %></b><span>Groups delayed</span></div>
+  <a class="stat link" href="#groups"><b><%= groups.length %></b><span>Groups advised</span></a>
+  <a class="stat link" href="/adviser/pending"><b><%= pending %></b><span>Pending reviews</span></a>
+  <a class="stat link" href="/adviser/consultations"><b><%= requests.length %></b><span>Consultation requests</span></a>
+  <a class="stat link" href="/adviser/delayed"><b><%= delayed %></b><span>Groups delayed</span></a>
 </div>
 
 <div class="layout">
@@ -32,18 +32,18 @@
     <% }) %>
   </section>
   <% } %>
-  <section class="card">
+  <section class="card" id="groups">
     <header><h2>Groups</h2></header>
     <div class="tablewrap"><table class="cards">
       <thead><tr><th>Group</th><th>Chapters</th><th>Progress</th><th class="num">Pending</th><th>Health</th></tr></thead>
       <tbody>
       <% groups.forEach(g => { %>
         <tr>
-          <td><a href="/adviser/group/<%= g.id %>"><b><%= g.name %></b></a><br><span class="small muted"><%= g.title %></span></td>
+          <td><a href="/adviser/group/<%= g.id %>"><b><%= g.name %></b></a><br><span class="small muted"><%= g.title %></span><% if (L.classLabel(g)) { %><br><span class="small"><%= L.classLabel(g) %></span><% } %></td>
           <td data-label="Chapters"><%- L.strip(g.chapters) %></td>
-          <td data-label="Progress"><%- L.bar(g.approved) %></td>
+          <td data-label="Progress"><%- L.bar(g.approved, g.chapters.length) %></td>
           <td class="num" data-label="Pending"><%= g.pending %></td>
-          <td data-label="Health"><%- L.hpill(g.health) %></td>
+          <td data-label="Health"><%- L.hpill(g.health) %> <%- L.readyPill(g.readiness) %></td>
         </tr>
       <% }) %>
       <% if (!groups.length) { %><tr><td colspan="5" class="muted">No groups yet. The coordinator sends advisory requests, and you accept the ones you can take.</td></tr><% } %>

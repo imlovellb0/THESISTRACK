@@ -1,25 +1,99 @@
 <%- include('../partials/header') %>
-<div class="pagehead"><h1>Groups</h1><span class="muted small">Students create their own groups. You request advisers, record the defense panel and schedule defenses.</span></div>
+<div class="pagehead"><h1>Groups</h1></div>
+<% if (groups.length) { %>
 <section class="card">
+  <header><h2>Set a deadline for several groups</h2></header>
+  <form class="stack" method="post" action="/admin/groups/deadline">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="fields">
+      <label class="field"><span>Content</span>
+        <select name="chapter" required>
+          <% chNames.forEach((name, i) => { %><option value="<%= i + 1 %>"><%= i + 1 %>. <%= name %></option><% }) %>
+        </select></label>
+      <label class="field"><span>Deadline</span><input type="date" name="deadline" required></label>
+    </div>
+    <div class="field"><span>Groups <span class="hint">(hover to choose)</span></span>
+      <div class="grouppick" tabindex="0"><span class="pickbtn">Choose groups <span class="pickcount">(none selected)</span> ▾</span>
+      <div class="checks pickpanel">
+        <label><input type="checkbox" id="allgroups"> <b>All groups</b></label>
+        <% groups.forEach(g => { %><label><input type="checkbox" name="groups" value="<%= g.id %>" data-name="<%= g.name %>"> <%= g.name %></label><% }) %>
+      </div></div>
+      <div class="pickchosen" aria-live="polite"></div></div>
+    <div class="row"><button class="btn primary" type="submit">Set deadline</button></div>
+  </form>
+</section>
+<section class="card">
+  <header><h2>Set a defense date for several groups</h2></header>
+  <form class="stack" method="post" action="/admin/groups/defense">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="fields">
+      <label class="field"><span>Defense date</span><input type="date" name="defense_date" required></label>
+      <label class="field"><span>Time <span class="hint">(optional, empty keeps each group's time)</span></span>
+        <input type="time" name="defense_time"></label>
+      <label class="field"><span>Room <span class="hint">(optional)</span></span><input type="text" name="room" maxlength="60" placeholder="Keep each group's room"></label>
+    </div>
+    <div class="field"><span>Groups <span class="hint">(hover to choose)</span></span>
+      <div class="grouppick" tabindex="0"><span class="pickbtn">Choose groups <span class="pickcount">(none selected)</span> ▾</span>
+      <div class="checks pickpanel">
+        <label><input type="checkbox" class="pickall"> <b>All groups</b></label>
+        <% groups.forEach(g => { %><label><input type="checkbox" name="groups" value="<%= g.id %>" data-name="<%= g.name %>"> <%= g.name %><%= g.defense_date ? ' (now ' + L.fmtDate(g.defense_date) + ')' : '' %></label><% }) %>
+      </div></div>
+      <div class="pickchosen" aria-live="polite"></div></div>
+    <div class="field"><span>Panel members <span class="hint">(optional: choose at least two to set this panel on every ticked group, or none to keep each group's own panel)</span></span>
+      <div class="checks">
+        <% panelists.forEach(p => { %><label><input type="checkbox" name="panel" value="<%= p.id %>"> <%= p.name %></label><% }) %>
+        <% if (!panelists.length) { %><span class="muted small">No panel members yet.</span><% } %>
+        <a class="small" href="/admin/panel">Add or edit panel members</a>
+      </div></div>
+    <p class="small muted">A group needs a time, a room and two panel members. Groups missing any of these are skipped, and you will be told which.</p>
+    <div class="row"><button class="btn primary" type="submit">Set defense date</button></div>
+  </form>
+</section>
+<script>
+document.querySelectorAll('form[action="/admin/groups/deadline"], form[action="/admin/groups/defense"]').forEach(function (f) {
+  var all = f.querySelector('.pickall, #allgroups');
+  var boxes = f.querySelectorAll('input[name="groups"]');
+  var count = f.querySelector('.pickcount');
+  var chosen = f.querySelector('.pickchosen');
+  function update() {
+    var n = Array.prototype.filter.call(boxes, function (x) { return x.checked; }).length;
+    all.checked = n === boxes.length;
+    count.textContent = n ? '(' + n + ' selected)' : '(none selected)';
+    chosen.innerHTML = '';
+    boxes.forEach(function (b) {
+      if (!b.checked) return;
+      var chip = document.createElement('span');
+      chip.className = 'pill info';
+      chip.textContent = b.getAttribute('data-name');
+      chosen.appendChild(chip);
+    });
+  }
+  all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); update(); });
+  boxes.forEach(function (b) { b.addEventListener('change', update); });
+});
+</script>
+<% } %>
+<section class="card">
+  <% if (filter) { %><p class="small"><span class="pill info">Showing <%= { 'on-track': 'on track', delayed: 'delayed', completed: 'completed' }[filter] %> groups (<%= shown.length %>)</span> <a href="/admin/groups">Show all groups</a></p><% } %>
   <label class="field filterbar"><span>Search this list</span><input type="search" data-filter="#grouptable" placeholder="Type a name, email or role"></label>
   <div class="tablewrap"><table id="grouptable">
-    <thead><tr><th>Group</th><th>Adviser</th><th>Progress</th><th>Defense</th><th>Health</th><th></th></tr></thead>
+    <thead><tr><th>Group</th><th>Adviser</th><th>Progress</th><th>Defense</th><th>Status</th><th></th></tr></thead>
     <tbody>
-    <% groups.forEach(g => { %>
+    <% shown.forEach(g => { %>
       <tr>
-        <td><b><%= g.name %></b><br><span class="small muted"><%= g.title %></span></td>
+        <td><b><%= g.name %></b><br><span class="small muted"><%= g.title %></span><% if (L.classLabel(g)) { %><br><span class="small"><%= L.classLabel(g) %></span><% } %></td>
         <td><%= g.adviser_name || '' %>
           <% const rq = g.lastRequest; %>
           <% if (rq && rq.status === 'Pending') { %><span class="pill info">Waiting for <%= rq.adviser_name %></span>
           <% } else if (!g.adviser_name && rq && rq.status === 'Declined') { %><span class="pill bad"><%= rq.adviser_name %> declined</span><br><span class="small muted">Reason: <%= rq.reason %></span>
           <% } else if (!g.adviser_name) { %><span class="pill warn">Not assigned</span><% } %></td>
-        <td><%- L.bar(g.approved) %></td>
+        <td><%- L.bar(g.approved, g.chapters.length) %></td>
         <td><% if (g.defense_date) { %><%= L.fmtDate(g.defense_date) %>, <%= g.defense_time %><br><span class="small muted">Room <%= g.room %></span><% } else { %><span class="muted">Not scheduled</span><% } %></td>
-        <td><%- L.hpill(g.health) %></td>
+        <td><%- L.hpill(g.health) %> <%- L.readyPill(g.readiness) %></td>
         <td><a class="btn sm" href="/admin/groups/<%= g.id %>">Manage</a></td>
       </tr>
     <% }) %>
-    <% if (!groups.length) { %><tr><td colspan="6" class="muted">No groups yet. Students create them after they sign up.</td></tr><% } %>
+    <% if (!shown.length) { %><tr><td colspan="6" class="muted"><%= filter ? 'No groups have this status.' : '' %><%= filter ? '' : 'No groups yet. Students create them after they sign up.' %></td></tr><% } %>
     </tbody>
   </table></div>
 </section>

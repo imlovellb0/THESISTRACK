@@ -1,0 +1,12 @@
+<%- include('partials/header') %>
+<%- include('partials/back', { href: '/notifications', label: 'Back', hist: true }) %>
+<section class="card prose">
+  <p class="small muted">Announcement</p>
+  <h1><%= a.title %></h1>
+  <p class="small muted">
+    Posted by <b><%= a.poster || 'Unknown' %></b><% if (a.poster_role) { %> (<%= L.ROLE_LABEL[a.poster_role] || a.poster_role %>)<% } %>
+    on <%= L.fmtDateTime(a.created_at) %>
+  </p>
+  <div style="white-space: pre-wrap;"><%= a.body %></div>
+</section>
+<%- include('partials/footer') %>

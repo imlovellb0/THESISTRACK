@@ -8,7 +8,7 @@
     <% if (next.kind === 'overdue' || next.kind === 'due') { %>
       <div class="row">
         <div style="flex:1;min-width:12rem">
-          <b>Chapter <%= next.chapter.number %>: <%= L.CH_NAMES[next.chapter.number - 1] %></b><br>
+          <b>Chapter <%= next.chapter.number %>: <%= chNames[next.chapter.number - 1] %></b><br>
           <span class="small"><%= next.kind === 'overdue' ? 'was due ' : 'is due ' %><%= L.inDays(next.days) %> (<%= L.fmtDate(next.chapter.deadline) %>)<%= next.chapter.status === 'revision' ? ' · your adviser asked for a revision' : next.chapter.status === 'rejected' ? ' · rejected, upload a new version' : '' %></span>
         </div>
         <a class="btn <%= next.kind === 'overdue' ? 'bad' : 'primary' %>" href="/student/chapter/<%= next.chapter.number %>"><%= next.chapter.status === 'none' ? 'Upload' : 'Open chapter' %></a>
@@ -16,7 +16,7 @@
     <% } else if (next.kind === 'review') { %>
       <b>Chapter <%= next.chapter.number %> is with your adviser.</b> <span class="small muted">Nothing to do until they reply.</span>
     <% } else if (next.kind === 'done') { %>
-      <b>All five chapters are approved.</b> <span class="small muted"><%= g.defense_date ? 'Prepare for your defense below.' : 'Ask the coordinator about your defense schedule.' %></span>
+      <b>All chapters are approved.</b> <span class="small muted"><%= g.defense_date ? 'Prepare for your defense below.' : g.endorsed_at ? 'Your adviser endorsed you for the defense. The coordinator will set your defense date.' : 'Your group is ready to defend. Waiting for your adviser to endorse you for the defense.' %></span>
     <% } else { %>
       <b>No deadlines are set yet.</b> <span class="small muted">Your adviser sets them once assigned.</span>
     <% } %>
@@ -25,15 +25,16 @@
   <section class="card">
     <header>
       <div><span class="label"><%= g.name %> · adviser <%= adviser ? adviser.name : pendingAdviser ? pendingAdviser + ' (waiting for them to accept)' : 'not assigned yet' %></span>
-        <h1 style="margin-top:2px"><%= g.title %></h1></div>
+        <h1 style="margin-top:2px"><%= g.title %></h1>
+        <% if (L.classLabel(g)) { %><div class="small muted">Class: <b><%= L.classLabel(g) %></b></div><% } %></div>
       <%- L.hpill(health) %>
     </header>
-    <div class="row"><div style="flex:1;min-width:10rem"><%- L.bar(approved) %></div>
+    <div class="row"><div style="flex:1;min-width:10rem"><%- L.bar(approved, chapters.length) %></div>
       <span class="small muted"><%= openComments %> unresolved comment<%= openComments === 1 ? '' : 's' %></span></div>
     <div class="timeline">
       <% chapters.forEach(c => { %>
         <a class="step <%= c.status %>" href="/student/chapter/<%= c.number %>">
-          <span class="label">Chapter <%= c.number %></span><b><%= L.CH_NAMES[c.number - 1] %></b><span><%- L.pill(c.status) %></span>
+          <span class="label">Chapter <%= c.number %></span><b><%= chNames[c.number - 1] %></b><span><%- L.pill(c.status) %></span>
         </a>
       <% }) %>
     </div>
@@ -46,7 +47,7 @@
       <tbody>
       <% chapters.forEach(c => { %>
         <tr>
-          <td><a href="/student/chapter/<%= c.number %>"><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></a></td>
+          <td><a href="/student/chapter/<%= c.number %>"><%= c.number %>. <%= chNames[c.number - 1] %></a></td>
           <td data-label="Status"><%- L.pill(c.status) %></td>
           <td data-label="Deadline"><%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
           <td class="mono" data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> <span class="muted">v<%= c.versions %></span><% } else { %>None<% } %></td>
@@ -96,6 +97,11 @@
       <label class="field" style="flex:1;min-width:12rem"><span>Add members by email <span class="hint">(several: separate with commas. No account yet? They are invited and join when they register.)</span></span><input type="text" name="email" placeholder="classmate@student.edu.ph" required></label>
       <button class="btn" type="submit" style="align-self:flex-end">Add</button>
     </form>
+    <form class="stack" method="post" action="/student/group/class">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <%- include('../partials/class-fields', { v: g }) %>
+      <div class="row"><button class="btn" type="submit">Save group course and section</button></div>
+    </form>
     <% } else { %>
       <p class="small muted">Only the group leader can add or remove members.</p>
     <% } %>
@@ -113,6 +119,22 @@
   <section class="card">
     <header><h2>First steps</h2><span class="small muted"><%= steps.length - stepsLeft %> of <%= steps.length %> done</span></header>
     <%- include('../partials/checklist', { steps }) %>
+  </section>
+  <% } %>
+
+  <% if (result) { %>
+  <section class="card" id="result">
+    <header><h2>Defense result</h2><span class="pill <%= result.outcome === 'Passed' ? 'good' : result.outcome === 'Failed' ? 'bad' : 'warn' %>"><%= result.outcome %></span></header>
+    <% if (result.average !== null) { %><p><b>Average score: <%= result.average.toFixed(2) %></b> <span class="small muted">out of <%= result.criteria.reduce((a, c) => a + c.max, 0) %>, from all panel members</span></p><% } %>
+    <% if (result.criteria.length) { %>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Criterion</th><th class="num">Average</th><th class="num">Out of</th></tr></thead>
+      <tbody><% result.criteria.forEach(c => { %><tr><td><%= c.title %></td><td class="num"><%= c.avg === null ? '-' : c.avg.toFixed(2) %></td><td class="num"><%= c.max %></td></tr><% }) %></tbody>
+    </table></div>
+    <% } %>
+    <% if (result.note) { %><h3>Note from the coordinator</h3><p><%= result.note %></p><% } %>
+    <% if (result.remarks.length) { %><h3>Panel remarks</h3><ul class="quotes"><% result.remarks.forEach(t => { %><li><%= t %></li><% }) %></ul><% } %>
+    <p class="small muted">Released <%= L.fmtDateTime(result.releasedAt) %>.</p>
   </section>
   <% } %>
 
@@ -159,7 +181,7 @@
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <div class="fields">
         <label class="field"><span>Date</span><input type="date" name="date" min="<%= L.today() %>" required></label>
-        <label class="field"><span>Time</span><select name="slot"><% slots.forEach(s => { %><option><%= s %></option><% }) %></select></label>
+        <label class="field"><span>Time</span><input type="time" name="slot" required></label>
       </div>
       <label class="field"><span>Topic</span><input type="text" name="topic" maxlength="200" placeholder="Chapter 3 survey questions" required></label>
       <button class="btn primary" type="submit">Request consultation</button>

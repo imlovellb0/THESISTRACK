@@ -8,26 +8,39 @@
     <label class="field"><span>Start a message to</span>
       <select name="target" required>
         <option value="" disabled selected>Choose a group or a person</option>
-        <% if (starters.groups.length) { %><optgroup label="Groups"><% starters.groups.forEach(g => { %><option value="group:<%= g.id %>"><%= g.name %></option><% }) %></optgroup><% } %>
+        <% if (starters.groups.length) { %><optgroup label="Groups"><% starters.groups.forEach(g => { %><option value="group:<%= g.id %>"><%= g.name %><%= L.classLabel(g) ? ' (' + L.classLabel(g) + ')' : '' %></option><% }) %></optgroup><% } %>
         <% ['adviser', 'student'].forEach(r => { const ps = starters.people.filter(p => p.role === r); if (ps.length) { %>
-          <optgroup label="<%= L.ROLE_LABEL[r] %>s"><% ps.forEach(p => { %><option value="user:<%= p.id %>"><%= p.name %></option><% }) %></optgroup>
+          <optgroup label="<%= L.ROLE_LABEL[r] %>s"><% ps.forEach(p => { %><option value="user:<%= p.id %>"><%= p.name %><%= p.role === 'student' && L.classLabel(p) ? ' (' + L.classLabel(p) + ')' : '' %></option><% }) %></optgroup>
         <% } }) %>
       </select></label>
     <button class="btn" type="submit">Open</button>
   </form>
   <% } %>
-  <ul class="list threads">
+  <label class="field"><span>Search conversations</span><input type="search" id="threadsearch" autocomplete="off" placeholder="<%= starters ? 'Type a name, group or message' : 'Type a name or message' %>"></label>
+  <% if (starters) { %>
+  <form method="post" action="/messages/start" id="startfound" hidden>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <p class="small muted" style="margin:.5rem 0 .25rem">No conversation yet. Open one:</p>
+    <ul class="list">
+      <% starters.groups.forEach(g => { %><li data-start="<%= (g.name + ' ' + L.classLabel(g)).toLowerCase() %>"><button class="linkbtn" type="submit" name="target" value="group:<%= g.id %>"><%= g.name %> <span class="muted small">(group<%= L.classLabel(g) ? ' · ' + L.classLabel(g) : '' %>)</span></button></li><% }) %>
+      <% starters.people.forEach(p => { %><li data-start="<%= (p.name + ' ' + (p.role === 'student' ? L.classLabel(p) : '')).toLowerCase() %>" data-person="<%= p.name.toLowerCase() %>"><button class="linkbtn" type="submit" name="target" value="user:<%= p.id %>"><%= p.name %> <span class="muted small">(<%= L.ROLE_LABEL[p.role].toLowerCase() %><%= p.role === 'student' && L.classLabel(p) ? ' · ' + L.classLabel(p) : '' %>)</span></button></li><% }) %>
+    </ul>
+  </form>
+  <% } %>
+  <ul class="list threads" id="threadlist">
     <% threads.forEach(t => { %>
-      <li>
+      <li data-thread="<%= (titleOf(t) + ' ' + classOf(t) + ' ' + (t.last_body || '')).toLowerCase() %>"<% if (t.kind === 'direct' && t.user_name) { %> data-person="<%= t.user_name.toLowerCase() %>"<% } %>>
         <a class="thread <%= current && current.id === t.id ? 'on' : '' %>" href="/messages/<%= t.id %>">
           <span class="row"><b><%= titleOf(t) %></b>
-            <span class="pill <%= t.kind === 'group' ? 'info' : '' %>"><%= t.kind === 'group' ? 'Group' : 'Private' %></span>
+            <span class="pill <%= t.kind === 'group' ? 'info' : '' %>"><%= t.kind === 'group' ? 'Group' : t.kind === 'adviser' ? (user.role === 'adviser' ? 'Student' : 'Adviser') : 'Private' %></span>
             <% if (t.unread) { %><span class="badge" title="Unread messages">New</span><% } %></span>
+          <% if (classOf(t)) { %><span class="small"><%= classOf(t) %></span><% } %>
           <span class="small muted preview"><%= t.last_body || (t.total ? 'Hidden message' : 'No messages yet') %></span>
         </a>
       </li>
     <% }) %>
     <% if (!threads.length) { %><li class="muted small">No conversations yet.<% if (starters) { %> Start one above.<% } %></li><% } %>
+    <li class="muted small" id="threadnone" hidden>No conversation matches.</li>
   </ul>
 </aside>
 
@@ -38,8 +51,11 @@
   <header>
     <h2><a class="backlink small" href="/messages">&larr; All</a> <%= titleOf(current) %></h2>
   </header>
+  <% if (classOf(current)) { %><p class="small">Class: <b><%= classOf(current) %></b></p><% } %>
+  <% if (members.length) { %><p class="small">Members: <%= members.map(m => m.name + (m.is_leader ? ' (leader)' : '')).join(', ') %></p><% } %>
   <p class="small muted">
     <% if (current.kind === 'group') { %>Everyone in this group, the adviser and the coordinator can read this thread.
+    <% } else if (current.kind === 'adviser') { %><%= user.role === 'student' ? 'Private: only you and your adviser can read this thread. Your groupmates and the coordinator cannot.' : 'Private: only you and this student can read this thread.' %>
     <% } else if (user.role === 'admin') { %>A private thread with this person. Every coordinator of your workspace can read it.
     <% } else { %>Private: only you and the coordinator can read this thread.<% } %>
   </p>
@@ -50,21 +66,52 @@
     <% items.forEach(m => { %>
       <div class="msg <%= m.mine ? 'mine' : '' %> <%= m.hidden ? 'hidden-msg' : '' %>" data-id="<%= m.id %>">
         <div class="meta"><b><%= m.sender %></b> <span class="muted"><%= m.role %><%= m.role ? ' · ' : '' %><%= m.when %></span><% if (m.hidden) { %> <span class="pill bad">Hidden</span><% } %></div>
-        <div class="body"><%= m.body %></div>
+        <% if (m.body) { %><div class="body"><%= m.body %></div><% } %>
+        <% if (m.file) { %><div class="body"><a href="/messages/<%= current.id %>/file/<%= m.id %>">&#128206; <%= m.file %></a></div><% } %>
         <% if (user.role === 'admin') { %>
         <form method="post" action="/messages/<%= current.id %>/hide/<%= m.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit"><%= m.hidden ? 'Show again' : 'Hide' %></button></form>
         <% } %>
       </div>
     <% }) %>
   </div>
-  <form class="stack sendform" method="post" action="/messages/<%= current.id %>/send">
+  <form class="stack sendform" method="post" action="/messages/<%= current.id %>/send" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label class="field"><span class="small muted">Message <span class="hint">(Ctrl+Enter sends)</span></span>
-      <textarea name="body" rows="3" maxlength="<%= MAX %>" required></textarea></label>
+      <textarea name="body" rows="3" maxlength="<%= MAX %>"></textarea></label>
+    <label class="field"><span class="small muted">Attach a file <span class="hint">(optional: PDF, Word, PNG or JPG, up to 10 MB)</span></span>
+      <input type="file" name="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"></label>
     <div><button class="btn primary" type="submit">Send</button></div>
   </form>
   <% } %>
 </section>
 </div>
+<script>
+// Search as you type: hide the conversations that do not match. The coordinator also sees people and groups with no conversation yet.
+(function () {
+  var box = document.getElementById('threadsearch');
+  var threads = [].slice.call(document.querySelectorAll('#threadlist [data-thread]'));
+  var found = document.getElementById('startfound');
+  var none = document.getElementById('threadnone');
+  box.addEventListener('input', function () {
+    var q = box.value.trim().toLowerCase(), shown = 0, starts = 0;
+    var have = {};
+    threads.forEach(function (li) {
+      var hit = !q || li.dataset.thread.indexOf(q) !== -1;
+      li.hidden = !hit;
+      if (hit) shown++;
+      if (li.dataset.person) have[li.dataset.person] = true;
+    });
+    if (found) {
+      [].forEach.call(found.querySelectorAll('[data-start]'), function (li) {
+        var hit = !!q && li.dataset.start.indexOf(q) !== -1 && !(li.dataset.person && have[li.dataset.person]);
+        li.hidden = !hit;
+        if (hit) starts++;
+      });
+      found.hidden = !starts;
+    }
+    none.hidden = !q || shown > 0 || starts > 0;
+  });
+})();
+</script>
 <% if (current) { %><script src="/static/messages.js"></script><% } %>
 <%- include('partials/footer') %>

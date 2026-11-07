@@ -1,0 +1,6 @@
+<% const v = locals.v || {}; %>
+<div class="fields">
+  <label class="field"><span>Course <span class="hint">(for example IT)</span></span><input type="text" name="course" value="<%= v.course || '' %>" maxlength="60" placeholder="IT"<%= locals.optional ? '' : ' required' %>></label>
+  <label class="field"><span>Year level</span><select name="year_level"<%= locals.optional ? '' : ' required' %>><option value="">Choose…</option><% Object.entries(L.YEAR_LEVELS).forEach(([n, label]) => { %><option value="<%= n %>"<%= String(v.year_level) === n ? ' selected' : '' %>><%= label %></option><% }) %></select></label>
+  <label class="field"><span>Section <span class="hint">(for example 4B)</span></span><input type="text" name="section" value="<%= v.section || '' %>" maxlength="10" placeholder="4B"<%= locals.optional ? '' : ' required' %>></label>
+</div>

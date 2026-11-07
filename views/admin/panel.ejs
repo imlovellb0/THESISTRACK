@@ -1,5 +1,5 @@
 <%- include('../partials/header') %>
-<div class="pagehead"><h1>Panel members</h1><span class="muted small">Panel members do not sign in. You record them here and assign them to a group's defense panel.</span></div>
+<div class="pagehead"><h1>Panel members</h1><span class="muted small">Invite panelists with a one-time code. They register with it, then sign in to see the groups you assign them to.</span></div>
 <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
 <div class="layout">
 <section class="card">
@@ -27,19 +27,51 @@
         </td>
       </tr>
     <% }) %>
-    <% if (!members.length) { %><tr><td colspan="4" class="muted">No panel members yet. Add one on the right.</td></tr><% } %>
+    <% if (!members.length) { %><tr><td colspan="4" class="muted">No panel members yet. Invite one on the right.</td></tr><% } %>
     </tbody>
   </table></div>
 </section>
 
+<div class="col">
 <section class="card">
-  <header><h2>Add a panel member</h2></header>
-  <form class="stack" method="post" action="/admin/panel">
+  <header><h2>Invite a panelist</h2></header>
+  <form class="stack" method="post" action="/admin/panel/invite">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" maxlength="255" required></label>
-    <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" maxlength="190" required></label>
-    <button class="btn primary" type="submit">Add panel member</button>
+    <label class="field"><span>Email <span class="hint">(an address the panelist can open)</span></span><input type="email" name="email" value="<%= form.email || '' %>" maxlength="190" required></label>
+    <button class="btn primary" type="submit">Send invitation</button>
   </form>
+  <p class="small muted">The panelist gets a 6-digit code by email that works for <%= ttl %> minutes. They open
+    <a href="/register/panel">/register/panel</a>, enter their email and the code, and choose a password.</p>
+  <% if (!mailReady) { %><p class="small"><span class="pill warn">Email not set up</span> Codes are saved to <span class="mono">outbox/mail.log</span> in the project folder instead of being emailed.</p><% } %>
 </section>
+
+<section class="card">
+  <header><h2>Invitations</h2></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    <% invites.forEach(i => { %>
+      <tr>
+        <td><%= i.name %><br><span class="small mono"><%= i.email %></span></td>
+        <td><% if (i.status === 'Registered') { %><span class="pill good">Registered</span>
+            <% } else if (i.status === 'Cancelled') { %><span class="pill">Cancelled</span>
+            <% } else if (i.expired) { %><span class="pill warn">Code expired</span>
+            <% } else { %><span class="pill info">Invited</span><% } %></td>
+        <td>
+          <% if (i.status === 'Invited') { %>
+          <div class="row">
+            <form method="post" action="/admin/panel/invite/<%= i.id %>/resend"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Send a new code</button></form>
+            <form method="post" action="/admin/panel/invite/<%= i.id %>/cancel"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Cancel</button></form>
+          </div>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!invites.length) { %><tr><td colspan="3" class="muted">No invitations yet.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+</div>
 </div>
 <%- include('../partials/footer') %>

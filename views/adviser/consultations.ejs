@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/adviser', label: 'Back to my groups' }) %>
+<div class="pagehead"><h1>Consultation requests</h1><span class="muted small"><%= requests.length %> waiting for an answer</span></div>
+<div class="layout">
+<section class="card">
+  <header><h2>Waiting for your answer</h2></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Group</th><th>When</th><th>Topic</th><th></th></tr></thead>
+    <tbody>
+    <% requests.forEach(k => { %>
+      <tr>
+        <td><a href="/adviser/group/<%= k.group_id %>"><b><%= k.group_name %></b></a></td>
+        <td data-label="When"><%= L.fmtDate(k.date) %>, <%= k.slot %></td>
+        <td data-label="Topic"><%= k.topic %></td>
+        <td><div class="row">
+          <form method="post" action="/adviser/consultations/<%= k.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="/adviser/consultations"><input type="hidden" name="status" value="Confirmed"><button class="btn sm good" type="submit">Confirm</button></form>
+          <form method="post" action="/adviser/consultations/<%= k.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="/adviser/consultations"><input type="hidden" name="status" value="Declined"><button class="btn sm" type="submit">Decline</button></form>
+        </div></td>
+      </tr>
+    <% }) %>
+    <% if (!requests.length) { %><tr><td colspan="4" class="muted">No pending requests.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+<section class="card">
+  <header><h2>Upcoming meetings</h2></header>
+  <ul class="list">
+    <% upcoming.forEach(k => { %><li><b><%= L.fmtDate(k.date) %>, <%= k.slot %></b><span class="small"><%= k.group_name %>: <%= k.topic %></span></li><% }) %>
+    <% if (!upcoming.length) { %><li class="muted small">Nothing confirmed.</li><% } %>
+  </ul>
+</section>
+</div>
+<%- include('../partials/footer') %>

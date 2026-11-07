@@ -1,10 +1,10 @@
 <%- include('../partials/header') %>
 <div class="pagehead"><h1><%= ws.name %></h1><a class="small" href="/system/workspaces">&larr; All workspaces</a></div>
 <div class="stats">
-  <div class="stat"><b><%= counts.students %></b><span>Students</span></div>
-  <div class="stat"><b><%= staff.filter(s => s.role === 'adviser').length %></b><span>Advisers</span></div>
-  <div class="stat"><b><%= counts.panel %></b><span>Panel members</span></div>
-  <div class="stat"><b><%= counts.groups %></b><span>Groups</span></div>
+  <a class="stat link" href="/system/users?role=student&workspace=<%= ws.id %>"><b><%= counts.students %></b><span>Students</span></a>
+  <a class="stat link" href="/system/users?role=adviser&workspace=<%= ws.id %>"><b><%= staff.filter(s => s.role === 'adviser').length %></b><span>Advisers</span></a>
+  <a class="stat link" href="/system/users?role=panel&workspace=<%= ws.id %>"><b><%= counts.panel %></b><span>Panel members</span></a>
+  <a class="stat link" href="/system/groups?workspace=<%= ws.id %>"><b><%= counts.groups %></b><span>Groups</span></a>
   <div class="stat"><b><%= counts.files %></b><span>Files</span></div>
 </div>
 <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
@@ -37,15 +37,50 @@
       <button class="btn primary" type="submit">Add coordinator</button>
     </form>
   </section>
+  <% if (request && request.status === 'Pending') { %>
+  <section class="card">
+    <header><h2>Deletion request</h2><span class="pill warn">Pending</span></header>
+    <p class="small"><b><%= request.requested_name %></b> asked on <%= L.fmtDate(request.created_at) %> to delete this workspace.</p>
+    <p><b>Reason:</b> <%= request.reason %></p>
+    <p class="small muted">It holds <%= counts.students %> student<%= counts.students === 1 ? '' : 's' %>, <%= counts.groups %> group<%= counts.groups === 1 ? '' : 's' %> and <%= counts.files %> uploaded file<%= counts.files === 1 ? '' : 's' %>. Approving suspends the workspace for <%= graceDays %> days. Nothing is erased until you delete it after that.</p>
+    <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/deletion/approve">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Note <span class="hint">(optional)</span></span><input type="text" name="note" maxlength="1000"></label>
+      <button class="btn bad" type="submit" onclick="return confirm('Approve and suspend this workspace?')">Approve and suspend</button>
+    </form>
+    <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/deletion/reject">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Note to the coordinator <span class="hint">(required to reject)</span></span><input type="text" name="note" maxlength="1000"></label>
+      <button class="btn" type="submit">Reject the request</button>
+    </form>
+  </section>
+  <% } else if (request && request.status === 'Approved') { %>
+  <section class="card">
+    <header><h2>Deletion approved</h2><span class="pill <%= request.in_grace ? 'warn' : 'bad' %>"><%= request.in_grace ? 'Grace period' : 'Ready to delete' %></span></header>
+    <p class="small">Requested by <b><%= request.requested_name %></b> on <%= L.fmtDate(request.created_at) %>. Reason: <%= request.reason %></p>
+    <% if (request.decision_note) { %><p class="small">Your note: <%= request.decision_note %></p><% } %>
+    <p class="small"><%= request.in_grace ? 'The workspace is suspended. It can be permanently deleted after ' + L.fmtDate(request.delete_after) + '. Reactivate it under Status if the coordinator changed their mind.' : 'The grace period ended on ' + L.fmtDate(request.delete_after) + '. You can delete it permanently below.' %></p>
+  </section>
+  <% } else if (request && ['Rejected', 'Cancelled', 'Reversed'].includes(request.status)) { %>
+  <section class="card">
+    <header><h2>Last deletion request</h2><span class="pill"><%= request.status %></span></header>
+    <p class="small">By <%= request.requested_name %> on <%= L.fmtDate(request.created_at) %>. Reason: <%= request.reason %></p>
+    <% if (request.decision_note) { %><p class="small">Note: <%= request.decision_note %></p><% } %>
+  </section>
+  <% } %>
   <section class="card">
     <header><h2>Delete this workspace</h2></header>
-    <div class="flash warn">This cannot be undone. It permanently deletes every account in the workspace (including ID photos), all groups, chapters, uploaded files, comments, consultations, announcements and its activity log. To stop access without deleting anything, suspend it instead.</div>
+    <div class="flash warn">This cannot be undone. It permanently deletes every account in the workspace (including ID photos), all groups, chapters, uploaded files, comments, consultations, announcements and its activity log. It holds <%= counts.students %> student<%= counts.students === 1 ? '' : 's' %>, <%= counts.groups %> group<%= counts.groups === 1 ? '' : 's' %> and <%= counts.files %> file<%= counts.files === 1 ? '' : 's' %>. To stop access without deleting anything, suspend it instead.</div>
+    <% if (request && request.status === 'Approved' && request.in_grace) { %>
+      <p class="small muted">Locked until <%= L.fmtDate(request.delete_after) %>.</p>
+    <% } else { %>
     <form class="stack" method="post" action="/system/workspaces/<%= ws.id %>/delete">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label class="field"><span>Type the workspace name to confirm: <b><%= ws.name %></b></span><input type="text" name="confirm_name" autocomplete="off" required></label>
       <label class="field"><span>Your password</span><input type="password" name="password" autocomplete="current-password" required></label>
       <button class="btn bad" type="submit" onclick="return confirm('Delete this workspace and all of its data permanently?')">Delete workspace permanently</button>
     </form>
+    <% } %>
   </section>
 </div>
 <aside class="col">

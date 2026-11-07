@@ -31,10 +31,10 @@ if (PROD) app.set('trust proxy', 1); // the host's HTTPS proxy sits in front, so
 app.use((req, res, next) => {
   res.set({
     'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
+    'X-Frame-Options': 'SAMEORIGIN',
     'Referrer-Policy': 'same-origin',
-    // The pages use small inline scripts, so script-src is not restricted; these directives still block framing, plugins and form hijacking.
-    'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+    // The pages use small inline scripts, so 'unsafe-inline' stays for scripts; everything else is limited to this site, so injected code cannot load or send data to other hosts.
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
     'Permissions-Policy': 'camera=(self), microphone=(self), geolocation=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
   });
@@ -74,8 +74,10 @@ app.use(async (req, res, next) => {
   res.locals.workspace = null;
   res.locals.unread = 0;
   res.locals.unreadMsgs = 0;
+  res.locals.chNames = L.CH_NAMES;
+  res.locals.chGuide = L.CH_GUIDE;
   if (req.session.userId) {
-    const u = await db.get('SELECT id, name, email, role, active, workspace_id, avatar, student_no FROM users WHERE id = ?', [req.session.userId]);
+    const u = await db.get('SELECT id, name, email, role, active, workspace_id, avatar, student_no, course, year_level, section FROM users WHERE id = ?', [req.session.userId]);
     if (u && u.active) {
       req.user = u;
       res.locals.user = u;
@@ -89,6 +91,11 @@ app.use(async (req, res, next) => {
         req.flash('error', 'This workspace is suspended. Contact the system administrator.');
         res.locals.flash = req.session.flash;
         return next();
+      }
+      if (u.workspace_id) {
+        const contents = await L.contentsOf(u.workspace_id);
+        res.locals.chNames = contents.map((c) => c.title);
+        res.locals.chGuide = contents.map((c) => c.items);
       }
       res.locals.unread = (await db.get('SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND is_read = 0', [u.id])).n;
       res.locals.unreadMsgs = await messaging.unreadCount(u);
@@ -111,6 +118,7 @@ app.use('/ai', require('./routes/ai'));
 app.use('/messages', requireRole('student', 'adviser', 'admin'), require('./routes/messages'));
 app.use('/student', requireRole('student'), require('./routes/student'));
 app.use('/adviser', requireRole('adviser'), require('./routes/adviser'));
+app.use('/panel', requireRole('panel'), require('./routes/panel'));
 app.use('/admin', requireRole('admin'), require('./routes/admin'));
 app.use('/system', requireRole('superadmin'), require('./routes/system'));
 

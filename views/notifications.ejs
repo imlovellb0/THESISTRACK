@@ -1,11 +1,12 @@
 <%- include('partials/header') %>
-<div class="pagehead"><h1>Notifications</h1><span class="muted small"><%= wasUnread %> new</span>
-  <% if (items.length) { %><form method="post" action="/notifications/clear" onsubmit="return confirm('Delete all your notifications?')"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Clear all</button></form><% } %></div>
+<%- include('partials/back', { href: '/', label: 'Back', hist: true }) %>
+<div class="pagehead"><h1>Notifications</h1><span class="muted small" id="newtotal"><%= items.filter(n => !n.is_read).length %> new</span></div>
 <%
   const SECTIONS = [
     { key: 'adviser', title: 'From your adviser', mine: 'From advisers' },
     { key: 'coordinator', title: 'From the coordinator', mine: 'From the coordinator' },
     { key: 'student', title: 'From your group', mine: 'From students' },
+    { key: 'panel', title: 'From the panel', mine: 'From the panel' },
     { key: 'system', title: 'Reminders', mine: 'Reminders' },
   ];
   const known = SECTIONS.map((s) => s.key);
@@ -13,8 +14,9 @@
 %>
 <% if (!items.length) { %><section class="card"><p class="muted">Nothing yet. You will see submissions, reviews, deadlines and schedules here.</p></section><% } %>
 <% groups.forEach((g) => { %>
-<section class="card notif-group notif-<%= g.key %>">
-  <h2 class="notif-title"><%= user.role === 'student' ? g.title : g.mine %> <span class="notif-count"><%= g.rows.length %></span></h2>
+<% const fresh = g.rows.filter(n => !n.is_read).length; %>
+<details class="card notif-group notif-<%= g.key %>" data-source="<%= g.key %>" data-fresh="<%= fresh %>">
+  <summary class="notif-title"><span class="notif-name"><%= user.role === 'student' ? g.title : g.mine %></span> <span class="notif-count"><%= g.rows.length %></span><% if (fresh) { %> <span class="badge" aria-label="<%= fresh %> unread"><%= fresh %></span><% } %></summary>
   <% g.rows.forEach((n) => { %>
     <div class="notif <%= !n.is_read ? 'unread' : '' %>">
       <%
@@ -27,10 +29,32 @@
         <% if (n.link) { %><a href="<%= n.link %>"><%= head %></a><% } else { %><%= head %><% } %>
         <% if (extra) { %><span class="notif-detail"><%= extra %></span><% } %>
       </span>
-      <div class="small muted"><%= L.fmtDateTime(n.created_at) %>
-        <form method="post" action="/notifications/<%= n.id %>/delete" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn" type="submit" aria-label="Delete this notification">Delete</button></form></div>
+      <div class="small muted"><% if (n.cls) { %><b><%= n.cls %></b> · <% } %><%= L.fmtDateTime(n.created_at) %></div>
     </div>
   <% }) %>
-</section>
+</details>
 <% }) %>
+<script>
+// Opening a group marks its notifications read and takes down the red counters. The highlighted rows stay until you leave the page.
+(function () {
+  var csrf = '<%= csrf %>';
+  document.querySelectorAll('details.notif-group').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open || d.dataset.fresh === '0') return;
+      var fresh = Number(d.dataset.fresh);
+      d.dataset.fresh = '0';
+      var body = new URLSearchParams({ _csrf: csrf, source: d.dataset.source });
+      fetch('/notifications/read', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var b = d.querySelector('summary .badge'); if (b) b.remove();
+          var total = document.getElementById('newtotal'); if (total) total.textContent = data.unread + ' new';
+          var bell = document.getElementById('bellcount');
+          if (bell) { if (data.unread) bell.textContent = data.unread; else bell.remove(); }
+        })
+        .catch(function () { d.dataset.fresh = String(fresh); });
+    });
+  });
+})();
+</script>
 <%- include('partials/footer') %>

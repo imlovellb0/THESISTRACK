@@ -140,9 +140,7 @@ class Client {
   check(r.loc === '/system/announcements', 'sends an announcement to every workspace');
   check((await student.page('/student')).body.includes('Site maintenance Sunday'), 'a student sees it on their board');
   check((await coord.page('/notifications')).body.includes('Site maintenance Sunday'), 'a coordinator is notified');
-  const bid = /\/system\/announcements\/([0-9a-f]{16})\/delete/.exec((await sys.page('/system/announcements')).body)?.[1];
-  await sys.post(`/system/announcements/${bid}/delete`, {}, '/system/announcements');
-  check(!(await student.page('/student')).body.includes('Site maintenance Sunday'), 'removing it clears every board');
+  check((await student.page('/student')).body.includes('Site maintenance Sunday'), 'an announcement stays on the board as a record (there is no remove button)');
 
   // Coordinator invitations: opening a workspace needs a single-use code from the system administrator
   const newcomer = 'invited.prof@school.edu.ph';
@@ -226,6 +224,17 @@ class Client {
   check((await db.get('SELECT COUNT(*) AS n FROM users WHERE id IN (?, ?) AND active = 0', [other.id, mariaId])).n === 2, 'the system administrator deactivates accounts from different workspaces');
   await sys.post('/system/users/bulk', { action: 'activate', ids: [other.id, mariaId] }, '/system/users');
   check((await student.post('/system/users/bulk', { action: 'remove', ids: [mariaId] }, '/student')).status === 403, 'a student cannot use the system bulk route');
+
+  // A coordinator's deletion request: reject needs a note, approve suspends the workspace and locks the delete for the grace period.
+  await db.run("INSERT INTO workspace_deletions (workspace_id, requested_name, reason) VALUES (?, 'Coordinator', 'Course finished')", [wid]);
+  await sys.post(`/system/workspaces/${wid}/deletion/reject`, { note: '' }, `/system/workspaces/${wid}`);
+  check((await db.get('SELECT status FROM workspace_deletions WHERE workspace_id = ? ORDER BY id DESC LIMIT 1', [wid])).status === 'Pending', 'rejecting without a note does nothing');
+  await sys.post(`/system/workspaces/${wid}/deletion/approve`, { note: 'OK' }, `/system/workspaces/${wid}`);
+  check((await db.get('SELECT status FROM workspace_deletions WHERE workspace_id = ? ORDER BY id DESC LIMIT 1', [wid])).status === 'Approved' && !(await db.get('SELECT active FROM workspaces WHERE id = ?', [wid])).active, 'approving suspends the workspace');
+  await sys.post(`/system/workspaces/${wid}/delete`, { confirm_name: 'BSEd 3C Renamed', password: 'password123' }, `/system/workspaces/${wid}`);
+  check(!!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [wid])), 'the permanent delete is locked during the grace period');
+  await sys.post(`/system/workspaces/${wid}/toggle`, {}, `/system/workspaces/${wid}`);
+  check((await db.get('SELECT status FROM workspace_deletions WHERE workspace_id = ? ORDER BY id DESC LIMIT 1', [wid])).status === 'Reversed', 'reactivating the workspace reverses the approved request');
 
   // Deleting a workspace needs the exact name and the password.
   r = await sys.post(`/system/workspaces/${wid}/delete`, { confirm_name: 'wrong', password: 'password123' }, `/system/workspaces/${wid}`);

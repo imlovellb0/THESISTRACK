@@ -1,6 +1,7 @@
 <%- include('../partials/header') %>
 <div class="authwrap" style="margin-top:2vh">
   <section class="card">
+<%- include('../partials/back', { href: '/student', label: 'Back' }) %>
     <h1>Join <%= g.name %>?</h1>
     <p class="muted"><%= g.title %></p>
     <p class="small">Led by <b><%= leader %></b> · <%= count %> member<%= count === 1 ? '' : 's' %></p>

@@ -50,7 +50,7 @@ Delete the sample accounts before real use.
 
 One level above the coordinators. It has no workspace and manages the whole site at `/system`:
 
-- **Workspaces:** create one with its first coordinator, rename it, make a new join code, suspend or reactivate it, add more coordinators, delete it.
+- **Workspaces:** create one with its first coordinator, rename it, make a new join code, suspend or reactivate it, add more coordinators, delete it. A coordinator cannot delete a workspace: they send a deletion request with a reason, and the system administrator approves (the workspace is suspended for 30 days, then can be deleted) or rejects it.
 - **Users:** search every account in every workspace, filter by role, workspace and status, edit a name or email, reset a password, sign someone out of every device, deactivate, download a CSV, add another system administrator.
 - **Groups:** a read-only list of every group with its adviser and progress.
 - **Announcements:** send a notice to every workspace (or one), and choose who gets a notification.
@@ -96,7 +96,7 @@ Without these settings nothing is emailed. The message, including the code, is w
 
 ## Workspaces (several coordinators, one website)
 
-Every coordinator has a private **workspace**. The system administrator invites a teacher (name and email) under **Workspaces**, and the teacher gets a single-use invitation code by email. The code works once, for that email only, for 7 days, and five wrong tries lock it. The teacher opens `/register/coordinator`, enters the email and code, and gets a workspace with a join code. Students register with that code (or the link shown on the coordinator's Overview page) and advisers join through the coordinator's invitation, so each person belongs to exactly one workspace. Groups, users, panel members, announcements, invitations, reports, the activity log, uploaded files, ID photos and the similarity check are all limited to the workspace, so one coordinator never sees another's students.
+Every coordinator has a private **workspace**. The system administrator invites a teacher (name and email) under **Workspaces**, and the teacher gets a single-use invitation code by email. The code works once, for that email only, for 7 days, and five wrong tries lock it. The teacher opens `/register/coordinator`, enters the email and code, and gets a workspace with a join code. Students register with that code (or the link shown on the coordinator's Overview page) and advisers join through the coordinator's invitation, so each person belongs to exactly one workspace. Groups, users, panel members, announcements, invitations, reports, the activity log, uploaded files and ID photos are all limited to the workspace, so one coordinator never sees another's students.
 
 - Nobody can open a workspace without an invitation. The system administrator can pause all invitation codes at once under System, and can also create a workspace directly.
 - An existing database is upgraded on start: all current data moves into one "Default workspace".
@@ -194,7 +194,7 @@ With MySQL running, `npm run backup` saves the database (`database.sql`) and the
 
 ## Forgot password
 
-Users can ask for a one-time reset link on `/forgot` (valid for 30 minutes). Without email settings, the link is written to `outbox/mail.log`; the system administrator can also reset a password (coordinators cannot), and is notified when someone asks for a reset link. Set `APP_URL` (for example `https://your-site.example`) so the link in the email points to the live site.
+Users can ask for a one-time 6-digit reset code on `/forgot`. They enter the code and the new password on the same page. The code works once and only for 60 seconds, five wrong codes lock it, and a new code can be sent from the page. Without email settings, the code is written to `outbox/mail.log`.
 
 ## Other features
 

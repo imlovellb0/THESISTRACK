@@ -1,6 +1,7 @@
 <%- include('partials/header') %>
 <div class="authwrap">
   <section class="card">
+<%- include('partials/back', { href: '/login', label: 'Back to sign in' }) %>
     <h1>Create a student account</h1>
     <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
     <form class="stack" method="post" action="/register" enctype="multipart/form-data">
@@ -8,6 +9,9 @@
       <label class="field"><span>Join code <span class="hint">(from your thesis coordinator)</span></span><input type="text" name="join_code" value="<%= form.join_code || '' %>" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="K7M2QX9P" required></label>
       <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" autocomplete="name" required></label>
       <label class="field"><span>Student ID number</span><input type="text" name="student_no" value="<%= form.student_no || '' %>" maxlength="30" placeholder="2024-0001" required></label>
+      <label class="field"><span>Course <span class="hint">(for example IT or Information Technology)</span></span><input type="text" name="course" value="<%= form.course || '' %>" maxlength="60" placeholder="IT" required></label>
+      <label class="field"><span>Year level</span><select name="year_level" required><option value="">Choose…</option><% Object.entries(L.YEAR_LEVELS).forEach(([n, label]) => { %><option value="<%= n %>"<%= String(form.year_level) === n ? ' selected' : '' %>><%= label %></option><% }) %></select></label>
+      <label class="field"><span>Section <span class="hint">(for example 4B)</span></span><input type="text" name="section" value="<%= form.section || '' %>" maxlength="10" placeholder="4B" required></label>
       <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" autocomplete="username" required></label>
 
       <div class="field" id="idcapture">

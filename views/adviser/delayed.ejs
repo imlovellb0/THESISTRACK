@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/adviser', label: 'Back to my groups' }) %>
+<div class="pagehead"><h1>Groups delayed</h1><span class="muted small"><%= groups.length %> group<%= groups.length === 1 ? '' : 's' %> with a chapter past its deadline</span></div>
+<% groups.forEach(g => { %>
+<section class="card">
+  <header><h2><a href="/adviser/group/<%= g.id %>"><%= g.name %></a></h2><%- L.hpill(g.health) %></header>
+  <p class="small muted"><%= g.title %></p>
+  <p class="small"><%- L.bar(g.approved, g.chapters.length) %></p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Overdue chapter</th><th>Status</th><th>Deadline</th><th>Late by</th><th></th></tr></thead>
+    <tbody>
+    <% g.overdueChapters.forEach(c => { %>
+      <tr>
+        <td><%= c.number %>. <%= chNames[c.number - 1] %></td>
+        <td><%- L.pill(c.status) %></td>
+        <td><%= L.fmtDate(c.deadline) %></td>
+        <td><%= -L.daysUntil(c.deadline) %> day<%= -L.daysUntil(c.deadline) === 1 ? '' : 's' %></td>
+        <td><a class="btn sm" href="/adviser/group/<%= g.id %>/chapter/<%= c.number %>">Open</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</section>
+<% }) %>
+<% if (!groups.length) { %><section class="card"><p class="muted small">None of your groups is delayed.</p></section><% } %>
+<%- include('../partials/footer') %>

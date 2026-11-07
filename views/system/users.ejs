@@ -1,10 +1,10 @@
 <%- include('../partials/header') %>
 <% const qs = (p) => `?q=${encodeURIComponent(q)}&role=${role}&workspace=${workspace}&status=${status}&page=${p}`; %>
-<div class="pagehead"><h1>Users</h1><span class="muted small"><%= total %> account<%= total === 1 ? '' : 's' %></span></div>
+<div class="pagehead"><h1>Users</h1><span class="muted small" id="usercount"><%= total %> account<%= total === 1 ? '' : 's' %></span></div>
 <div class="layout">
 <section class="card">
   <form class="filterbar" method="get" action="/system/users">
-    <label class="field"><span>Search</span><input type="search" name="q" value="<%= q %>" placeholder="Name, email or student ID"></label>
+    <label class="field"><span>Search</span><input type="search" name="q" value="<%= q %>" autocomplete="off" placeholder="Name, email or student ID"></label>
     <label class="field" style="min-width:9rem;flex:0"><span>Role</span><select name="role"><option value="">All</option>
       <% Object.entries(roleLabels).forEach(([v, l]) => { %><option value="<%= v %>" <%= role === v ? 'selected' : '' %>><%= l %></option><% }) %></select></label>
     <label class="field" style="min-width:11rem;flex:0"><span>Workspace</span><select name="workspace"><option value="">All</option><option value="none" <%= workspace === 'none' ? 'selected' : '' %>>No workspace</option>
@@ -17,12 +17,13 @@
   </form>
   <form id="bulkform" class="bulkbar" method="post" action="/system/users/bulk" hidden>
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <input type="hidden" name="back" value="/system/users<%= qs(page) %>">
+    <input type="hidden" name="back" id="bulkback" value="/system/users<%= qs(page) %>">
     <b id="bulkcount">0 accounts selected</b>
     <button class="btn sm" type="submit" name="action" value="activate">Activate</button>
     <button class="btn sm" type="submit" name="action" value="deactivate">Deactivate</button>
     <button class="btn sm bad" type="submit" name="action" value="remove">Remove</button>
   </form>
+  <div id="userlist">
   <div class="tablewrap"><table>
     <thead><tr><th class="selcol"><input type="checkbox" class="selall" aria-label="Select all on this page"></th><th>Name</th><th>Role</th><th>Workspace</th><th>Email</th><th></th></tr></thead>
     <tbody>
@@ -54,6 +55,7 @@
     <% if (page < pages) { %><a href="<%= qs(page + 1) %>">Next &rarr;</a><% } %>
   </p>
   <% } %>
+  </div>
 </section>
 <section class="card">
   <header><h2>Add a system administrator</h2></header>
@@ -69,4 +71,29 @@
 </section>
 </div>
 <script src="/static/bulk.js"></script>
+<script>
+// Search as you type: every keystroke asks the server for the matching accounts and swaps the list in place.
+(function () {
+  var form = document.querySelector('form.filterbar');
+  var box = form.querySelector('input[name="q"]');
+  var timer, seq = 0;
+  function run() {
+    var url = '/system/users?' + new URLSearchParams(new FormData(form)).toString();
+    var mine = ++seq;
+    fetch(url, { headers: { 'X-Requested-With': 'fetch' } }).then(function (r) { return r.text(); }).then(function (html) {
+      if (mine !== seq) return; // a newer keystroke is already on its way
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var list = doc.getElementById('userlist');
+      if (!list) return;
+      document.getElementById('userlist').innerHTML = list.innerHTML;
+      document.getElementById('usercount').textContent = doc.getElementById('usercount').textContent;
+      document.getElementById('bulkback').value = doc.getElementById('bulkback').value;
+      history.replaceState(null, '', url);
+      document.dispatchEvent(new Event('change')); // let the tick-box toolbar recount
+    }).catch(function () {});
+  }
+  box.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 120); });
+  form.addEventListener('submit', function (e) { if (document.activeElement === box) { e.preventDefault(); clearTimeout(timer); run(); } });
+})();
+</script>
 <%- include('../partials/footer') %>

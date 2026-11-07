@@ -1,0 +1,20 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+<%- include('partials/back', { href: '/login', label: 'Back to sign in' }) %>
+    <h1>Panel registration</h1>
+    <p class="small muted">Only panelists invited by the coordinator can register. Use the email the coordinator invited and the 6-digit code sent to it.</p>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/register/panel">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" autocomplete="username" required></label>
+      <label class="field"><span>6-digit code</span><input type="text" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="123456" required></label>
+      <label class="field"><span>Choose a password <span class="hint">(at least 8 characters)</span></span><input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="field"><span>Confirm password</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+      <label class="small"><input type="checkbox" name="consent" required> I agree to the <a href="/privacy" target="_blank">Privacy Notice</a>.</label>
+      <button class="btn primary" type="submit">Create panel account</button>
+    </form>
+    <p class="small">Already registered? <a href="/login">Sign in</a>. No code yet? Ask the coordinator to send one.</p>
+  </section>
+</div>
+<%- include('partials/footer') %>

@@ -1,11 +1,11 @@
 <%- include('../partials/header') %>
 <div class="pagehead"><h1>Overview</h1></div>
 <div class="stats">
-  <div class="stat"><b><%= counts.groups %></b><span>Thesis groups</span></div>
-  <div class="stat"><b><%= counts.onTrack %></b><span>On track</span></div>
-  <div class="stat"><b><%= counts.delayed %></b><span>Delayed</span></div>
-  <div class="stat"><b><%= counts.completed %></b><span>Completed</span></div>
-  <div class="stat"><b><%= counts.users %></b><span>Users</span></div>
+  <a class="stat link" href="/admin/groups"><b><%= counts.groups %></b><span>Thesis groups</span></a>
+  <a class="stat link" href="/admin/groups?health=on-track"><b><%= counts.onTrack %></b><span>On track</span></a>
+  <a class="stat link" href="/admin/groups?health=delayed"><b><%= counts.delayed %></b><span>Delayed</span></a>
+  <a class="stat link" href="/admin/groups?health=completed"><b><%= counts.completed %></b><span>Completed</span></a>
+  <a class="stat link" href="/admin/users"><b><%= counts.users %></b><span>Users</span></a>
 </div>
 <% if (workspace) { %>
 <section class="card">
@@ -20,7 +20,7 @@
 <section class="card">
   <header><h2>Where every group stands</h2><span class="small muted">One block per chapter</span></header>
   <div class="tablewrap"><table>
-    <thead><tr><th>Group</th><th>Chapters</th><th>Why</th><th>Health</th></tr></thead>
+    <thead><tr><th>Group</th><th>Chapters</th><th>Comments</th><th>Status</th></tr></thead>
     <tbody>
     <% groups.forEach(g => { %>
       <tr>
@@ -32,7 +32,7 @@
     <% }) %>
     </tbody>
   </table></div>
-  <div class="row small muted"><span class="pill good">Approved</span><span class="pill info">Pending review</span><span class="pill warn">For revision</span><span class="pill bad">Rejected</span><span class="pill">Not submitted</span></div>
+  <div class="row small muted"><span class="pill good">Approved</span><span class="pill info">Pending review</span><span class="pill warn">For revision</span><span class="pill bad">Disapproved</span><span class="pill">Not submitted</span></div>
 </section>
 
 <section class="card">

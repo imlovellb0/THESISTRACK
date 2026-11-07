@@ -53,7 +53,7 @@ async function registerWith(client, code, name, email) {
   const fd = new FormData();
   fd.append('_csrf', await client.token('/register'));
   fd.append('consent', 'on');
-  for (const [k, v] of Object.entries({ join_code: code, name, student_no: `2040-${Date.now() % 100000}${seq}`.slice(0, 29), email, password: 'password123', confirm: 'password123' })) fd.append(k, v);
+  for (const [k, v] of Object.entries({ join_code: code, course: 'IT', year_level: '4', section: '4B', name, student_no: `2040-${Date.now() % 100000}${seq}`.slice(0, 29), email, password: 'password123', confirm: 'password123' })) fd.append(k, v);
   fd.append('id_photo', new Blob([png]), 'id.png');
   const res = await client.req('/register', { method: 'POST', body: fd });
   return { client, email, status: res.status, loc: res.headers.get('location') };
@@ -187,7 +187,7 @@ const flash = async (client, path = '/student') => (await client.page(path)).bod
   // ----- creating a group makes you the leader and invites missing people -----
   const creator = await register(code1, 'Group Creator');
   const mate = `grp-mate-${Date.now()}@student.edu.ph`;
-  await creator.client.post('/student/group', { name: 'Team Fresh', title: 'A new idea', emails: `${mate}, rico@student.edu.ph, juan@student.edu.ph` });
+  await creator.client.post('/student/group', { course: 'IT', year_level: '4', section: '4B', name: 'Team Fresh', title: 'A new idea', emails: `${mate}, rico@student.edu.ph, juan@student.edu.ph` });
   const fresh = await groupOf(creator.email);
   check(!!fresh && fresh.leader_id === await userId(creator.email) && !!fresh.join_code, 'creating a group makes the student its leader, with a join code');
   check(!!(await db.get('SELECT 1 FROM group_invites WHERE group_id = ? AND email = ?', [fresh.id, mate])), 'an email with no account is invited when the group is created');
@@ -222,9 +222,9 @@ const flash = async (client, path = '/student') => (await client.page(path)).bod
   await coord.post('/register/coordinator', { workspace: 'Throwaway', name: 'Prof. Gone', email: cemail, code: invCode, password: 'password123', confirm: 'password123', consent: 'on' }, '/register/coordinator');
   const cCode = /letter-spacing:\.15em">([A-Z0-9]{8})</.exec((await coord.page('/admin')).body)?.[1];
   const ts = await register(cCode, 'Throwaway Student');
-  await ts.client.post('/student/group', { name: 'Team Gone', title: 'Bye', emails: 'grp-nobody@student.edu.ph' });
+  await ts.client.post('/student/group', { course: 'IT', year_level: '4', section: '4B', name: 'Team Gone', title: 'Bye', emails: 'grp-nobody@student.edu.ph' });
   check((await db.get("SELECT COUNT(*) n FROM group_invites WHERE email = 'grp-nobody@student.edu.ph'")).n === 1, 'the throwaway group has a pending invitation');
-  await coord.post('/admin/workspace/delete', { confirm_name: 'Throwaway', password: 'password123' }, '/admin/workspace');
+  await require('../wsdelete').deleteWorkspace((await db.get("SELECT id FROM workspaces WHERE name = 'Throwaway'")).id);
   check(!(await db.get("SELECT 1 FROM workspaces WHERE name = 'Throwaway'")) && (await db.get("SELECT COUNT(*) n FROM group_invites WHERE email = 'grp-nobody@student.edu.ph'")).n === 0, 'deleting a workspace also removes its groups\' invitations');
 
   console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll group checks passed.');

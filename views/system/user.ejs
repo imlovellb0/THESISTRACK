@@ -9,7 +9,8 @@
     <form class="stack" method="post" action="/system/users/<%= u.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
       <label class="field"><span>Full name</span><input type="text" name="name" value="<%= u.name %>" maxlength="255" required></label>
       <label class="field"><span>Email</span><input type="email" name="email" value="<%= u.email %>" maxlength="190" required></label>
-      <% if (u.role === 'student') { %><label class="field"><span>Student ID number</span><input type="text" name="student_no" value="<%= u.student_no || '' %>" maxlength="30"></label><% } %>
+      <% if (u.role === 'student') { %><label class="field"><span>Student ID number</span><input type="text" name="student_no" value="<%= u.student_no || '' %>" maxlength="30"></label>
+      <%- include('../partials/class-fields', { v: u, optional: true }) %><% } %>
       <button class="btn primary" type="submit">Save changes</button>
     </form>
   </section>

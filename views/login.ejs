@@ -1,55 +1,12 @@
-<%- include('partials/header') %>
+<%# A failed sign-in is shown inside the sign-in card, so the page-level message is taken out before the header prints it. %>
+<% const loginMsg = locals.flash; %>
+<%- include('partials/header', { flash: null }) %>
 <div class="authwrap">
   <section class="card">
     <h1>Sign in</h1>
+    <% if (loginMsg) { %><div class="loginalert <%= loginMsg.type === 'error' ? 'bad' : 'info' %>" role="alert"><b><%= loginMsg.type === 'error' ? 'Could not sign you in.' : 'Notice' %></b> <%= loginMsg.msg %></div><% } %>
     <form class="stack" method="post" action="/login">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <div class="field rolefield"><span id="rolelabel">Sign in as</span>
-        <div class="selwrap">
-        <div class="flock" aria-hidden="true">
-          <span class="bird b1"><svg viewBox="0 0 36 28" width="36" height="28">
-            <path class="body" d="M7 16 L0 21 L1 13 Z"/>
-            <ellipse class="body" cx="15" cy="16" rx="10" ry="7"/>
-            <ellipse class="belly" cx="17" cy="19" rx="7" ry="4"/>
-            <circle class="body" cx="25" cy="10" r="6"/>
-            <path class="beak" d="M30 9 L35.5 11 L30 12.5 Z"/>
-            <circle cx="27" cy="8.6" r="1.1" fill="#16213A"/>
-            <path class="wing" d="M9 13 Q16 6 23 14 Q16 20 9 16 Z"/>
-            <path d="M13 22 V26.5 M18 22 V26.5" stroke="#16213A" stroke-width="1.2" stroke-linecap="round"/>
-          </svg></span>
-          <span class="bird b2"><svg viewBox="0 0 36 28" width="36" height="28">
-            <path class="body" d="M7 16 L0 21 L1 13 Z"/>
-            <ellipse class="body" cx="15" cy="16" rx="10" ry="7"/>
-            <ellipse class="belly" cx="17" cy="19" rx="7" ry="4"/>
-            <circle class="body" cx="25" cy="10" r="6"/>
-            <path class="beak" d="M30 9 L35.5 11 L30 12.5 Z"/>
-            <circle cx="27" cy="8.6" r="1.1" fill="#16213A"/>
-            <path class="wing" d="M9 13 Q16 6 23 14 Q16 20 9 16 Z"/>
-            <path d="M13 22 V26.5 M18 22 V26.5" stroke="#16213A" stroke-width="1.2" stroke-linecap="round"/>
-          </svg></span>
-          <span class="bird b3"><svg viewBox="0 0 36 28" width="36" height="28">
-            <path class="body" d="M7 16 L0 21 L1 13 Z"/>
-            <ellipse class="body" cx="15" cy="16" rx="10" ry="7"/>
-            <ellipse class="belly" cx="17" cy="19" rx="7" ry="4"/>
-            <circle class="body" cx="25" cy="10" r="6"/>
-            <path class="beak" d="M30 9 L35.5 11 L30 12.5 Z"/>
-            <circle cx="27" cy="8.6" r="1.1" fill="#16213A"/>
-            <path class="wing" d="M9 13 Q16 6 23 14 Q16 20 9 16 Z"/>
-            <path d="M13 22 V26.5 M18 22 V26.5" stroke="#16213A" stroke-width="1.2" stroke-linecap="round"/>
-          </svg></span>
-        </div>
-        <div class="rolepick" id="rolepick">
-          <button type="button" class="rolebtn" id="rolebtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="rolelabel rolevalue">
-            <span id="rolevalue" class="placeholder">Choose your role</span><span class="caret" aria-hidden="true">&#9662;</span>
-          </button>
-          <ul class="rolelist" id="rolelist" role="listbox" aria-labelledby="rolelabel" tabindex="-1">
-            <li role="option" id="role-student" data-value="student">Student</li>
-            <li role="option" id="role-adviser" data-value="adviser">Adviser</li>
-            <li role="option" id="role-admin" data-value="admin">Coordinator</li>
-          </ul>
-          <input type="hidden" name="role" id="roleinput" value="">
-        </div>
-        </div></div>
       <label class="field"><span>Email</span><input type="email" name="email" autocomplete="username" required autofocus></label>
       <label class="small"><input type="checkbox" id="rememberemail"> Remember my email</label>
       <label class="field"><span>Password</span><input type="password" name="password" autocomplete="new-password" required></label>
@@ -59,24 +16,11 @@
     <div class="small joinlinks">
       <p>New student? <a href="/register">Create an account</a>.</p>
       <p>Adviser with an invitation? <a href="/register/adviser">Register with your code</a>.</p>
+      <p>Panelist with an invitation? <a href="/register/panel">Register with your code</a>.</p>
       <p>Thesis coordinator or teacher? <a href="/register/coordinator">Open your own workspace</a>.</p>
     </div>
   </section>
-  <% if (showDemo) { %>
-  <section class="card">
-    <h2>Sample accounts</h2>
-    <p class="small muted">Created on first run. Every sample account uses the password <span class="mono">password123</span>. Delete them before real use.</p>
-    <div class="tablewrap"><table class="demo-accounts">
-      <thead><tr><th>Role</th><th>Email</th></tr></thead>
-      <tbody>
-        <tr><td>Student</td><td class="mono">juan@student.edu.ph</td></tr>
-        <tr><td>Student, no group</td><td class="mono">rico@student.edu.ph</td></tr>
-        <tr><td>Adviser</td><td class="mono">reyes@school.edu.ph</td></tr>
-        <tr><td>Coordinator</td><td class="mono">admin@school.edu.ph</td></tr>
-      </tbody>
-    </table></div>
-  </section>
-  <% } %>
+ 
 </div>
 <div class="sky" id="sky" aria-hidden="true"><div class="stars"></div><div class="sun" id="sun"></div><div class="moon" id="moon"></div></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -289,100 +233,6 @@
       if (box.checked) localStorage.setItem(KEY, email.value.trim());
       else localStorage.removeItem(KEY);
     } catch (e) {}
-  });
-})();
-</script>
-<script>
-(function () {
-  var flock = document.querySelector('.flock'), sel = document.getElementById('rolepick');
-  if (!flock || !sel || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  var busy = false;
-  function scare() {
-    if (busy) return;
-    busy = true;
-    flock.className = 'flock fly';
-    setTimeout(function () {
-      flock.className = 'flock back';
-      setTimeout(function () { flock.className = 'flock'; busy = false; }, 2300);
-    }, 4000);
-  }
-  sel.addEventListener('roleopen', scare);
-})();
-</script>
-<script>
-(function () {
-  var pick = document.getElementById('rolepick'), btn = document.getElementById('rolebtn'), list = document.getElementById('rolelist'),
-      input = document.getElementById('roleinput'), label = document.getElementById('rolevalue');
-  if (!pick) return;
-  var options = Array.prototype.slice.call(list.querySelectorAll('[role="option"]')), closeTimer = null, picked = false, active = -1;
-
-  function setActive(i) {
-    active = i;
-    options.forEach(function (o, n) { o.classList.toggle('active', n === i); });
-    if (i >= 0) btn.setAttribute('aria-activedescendant', options[i].id); else btn.removeAttribute('aria-activedescendant');
-  }
-  function open() {
-    clearTimeout(closeTimer);
-    if (pick.classList.contains('open')) return;
-    pick.classList.add('open');
-    btn.setAttribute('aria-expanded', 'true');
-    setActive(Math.max(0, options.findIndex(function (o) { return o.getAttribute('data-value') === input.value; })));
-    pick.dispatchEvent(new Event('roleopen'));
-  }
-  function close() {
-    clearTimeout(closeTimer);
-    pick.classList.remove('open');
-    btn.setAttribute('aria-expanded', 'false');
-    setActive(-1);
-  }
-  function choose(o) {
-    input.value = o.getAttribute('data-value');
-    label.textContent = o.textContent;
-    label.classList.remove('placeholder');
-    options.forEach(function (x) { x.setAttribute('aria-selected', x === o ? 'true' : 'false'); });
-    picked = true; // stay closed until the pointer leaves, so the list does not pop open again under it
-    close();
-    var next = document.querySelector('input[name="email"]');
-    if (next && !next.value) next.focus();
-  }
-
-  // Hovering the control with a mouse shows the roles. A short delay lets the pointer travel from the button to the list.
-  pick.addEventListener('pointerenter', function (e) { if (e.pointerType !== 'touch' && !picked) open(); });
-  pick.addEventListener('pointerleave', function (e) { if (e.pointerType === 'touch') return; picked = false; closeTimer = setTimeout(close, 150); });
-  // Touch screens have no hover, so tapping the button toggles the list. A mouse click just keeps it open.
-  var lastPointer = '';
-  btn.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; });
-  btn.addEventListener('click', function () {
-    var wasMouse = lastPointer && lastPointer !== 'touch';
-    lastPointer = '';
-    if (wasMouse) { picked = false; open(); return; }
-    if (pick.classList.contains('open')) close(); else { picked = false; open(); }
-  });
-  options.forEach(function (o) { o.addEventListener('click', function () { choose(o); }); });
-  document.addEventListener('click', function (e) { if (!pick.contains(e.target)) close(); });
-
-  btn.addEventListener('keydown', function (e) {
-    var k = e.key;
-    if (k === 'ArrowDown' || k === 'ArrowUp') {
-      e.preventDefault();
-      picked = false;
-      if (!pick.classList.contains('open')) { open(); return; }
-      setActive((active + (k === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
-    } else if ((k === 'Enter' || k === ' ') && pick.classList.contains('open') && active >= 0) {
-      e.preventDefault();
-      choose(options[active]);
-    } else if (k === 'Escape' || k === 'Tab') {
-      close();
-    }
-  });
-
-  // The hidden field cannot be "required", so check it here.
-  pick.closest('form').addEventListener('submit', function (e) {
-    if (input.value) return;
-    e.preventDefault();
-    picked = false;
-    btn.focus();
-    open();
   });
 })();
 </script>

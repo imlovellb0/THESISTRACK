@@ -1,7 +1,8 @@
 <%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/student', label: 'Back to my thesis' }) %>
 <div>
   <div class="crumbs"><a href="/student">My thesis</a> / Chapter <%= c.number %></div>
-  <div class="pagehead"><h1>Chapter <%= c.number %>: <%= L.CH_NAMES[c.number - 1] %></h1><%- L.pill(c.status) %></div>
+  <div class="pagehead"><h1>Chapter <%= c.number %>: <%= chNames[c.number - 1] %></h1><%- L.pill(c.status) %></div>
   <p class="muted small">Deadline <%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></p>
 </div>
 
@@ -28,7 +29,7 @@
     <ul class="list">
       <% versions.forEach(v => { %>
         <li><span class="mono">v<%= v.version_no %> · <a href="/files/<%= v.id %>"><%= v.original_name %></a></span>
-          <span class="small muted">Uploaded <%= L.fmtDateTime(v.uploaded_at) %> by <%= v.by_name %> &middot; <a class="small" href="/ai/submission/<%= v.id %>">AI check</a></span></li>
+          <span class="small muted">Uploaded <%= L.fmtDateTime(v.uploaded_at) %> by <%= v.by_name %> &middot; <% if (/\.(pdf|docx)$/i.test(v.stored_name)) { %><a class="small" href="/viewer/files/<%= v.id %>">View</a> &middot; <% } %><a class="small" href="/ai/submission/<%= v.id %>">AI check</a></span></li>
       <% }) %>
     </ul>
   </section>
@@ -40,6 +41,11 @@
     <% guide.forEach(item => { %><li><%= item %></li><% }) %>
   </ul>
 </details>
+
+<section class="card">
+  <header><h2>Files marked by your adviser</h2></header>
+  <%- include('../partials/marked-files', { marked, c }) %>
+</section>
 
 <section class="card">
   <header><h2>Adviser feedback</h2></header>

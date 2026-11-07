@@ -17,6 +17,7 @@ async function blocker(u) {
 }
 
 async function removeOne(u) {
+  const attached = await db.all('SELECT m.file_stored AS f FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE (c.user_id = ? OR c.student_id = ?) AND m.file_stored IS NOT NULL', [u.id, u.id]);
   await db.transaction(async () => {
     await db.run('DELETE FROM group_panelists WHERE panel_id = ?', [u.id]);
     await db.run('DELETE FROM adviser_requests WHERE adviser_id = ?', [u.id]);
@@ -25,7 +26,7 @@ async function removeOne(u) {
     }
     await db.run('DELETE FROM users WHERE id = ?', [u.id]); // notifications and reset links go with the user
   });
-  for (const f of [u.id_photo, u.avatar]) if (f) fs.rmSync(path.join(db.UPLOAD_DIR, path.basename(f)), { force: true });
+  for (const f of [u.id_photo, u.avatar, ...attached.map((r) => r.f)]) if (f) fs.rmSync(path.join(db.UPLOAD_DIR, path.basename(f)), { force: true });
 }
 
 // action: 'activate' | 'deactivate' | 'remove'. Returns { done, skipped: ['Name (reason)'] }.

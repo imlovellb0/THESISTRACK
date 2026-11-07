@@ -51,13 +51,15 @@
     <label class="field"><span>Full name</span><input type="text" name="name" value="<%= form.name || '' %>" required></label>
     <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email || '' %>" required></label>
     <label class="field"><span>Student ID number <span class="hint">(students only, optional)</span></span><input type="text" name="student_no" value="<%= form.student_no || '' %>" maxlength="30"></label>
+    <%- include('../partials/class-fields', { v: form, optional: true }) %>
+    <p class="small muted">Course, year level and section apply to students only.</p>
     <label class="field"><span>Role</span>
       <select name="role">
         <% [['student','Student'],['panel','Panel member']].forEach(([v, l]) => { %>
           <option value="<%= v %>" <%= form.role === v ? 'selected' : '' %>><%= l %></option>
         <% }) %>
       </select></label>
-    <label class="field"><span>Starting password <span class="hint">(at least 8 characters; not needed for panel members, who do not sign in)</span></span><input type="password" name="password" minlength="8" autocomplete="new-password"></label>
+    <label class="field"><span>Starting password <span class="hint">(at least 8 characters; not needed for panel members, who are invited from the Panel members page)</span></span><input type="password" name="password" minlength="8" autocomplete="new-password"></label>
     <button class="btn primary" type="submit">Add user</button>
   </form>
 </section>

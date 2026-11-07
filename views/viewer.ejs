@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+<%- include('partials/back', { href: '/', label: 'Back', hist: true }) %>
+<div class="pagehead"><h1><%= name %></h1><a class="btn sm" href="<%= src %>">Download</a></div>
+<% if (isPdf) { %>
+<iframe class="pdfview" src="<%= src %>?inline=1#toolbar=1" title="<%= name %>"></iframe>
+<p class="small muted">If the file does not appear, your browser may block PDF viewing. Use Download instead.</p>
+<% } else { %>
+<p class="small muted" id="docnote">Loading the document…</p>
+<div id="docview" class="docview"></div>
+<script src="/static/vendor/jszip.min.js"></script>
+<script src="/static/vendor/docx-preview.min.js"></script>
+<script>
+(function () {
+  var note = document.getElementById('docnote');
+  fetch('<%= src %>', { credentials: 'same-origin' })
+    .then(function (r) { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(function (blob) {
+      return docx.renderAsync(blob, document.getElementById('docview'), null, { inWrapper: true, ignoreWidth: false, breakPages: true });
+    })
+    .then(function () { note.textContent = 'This is a preview. Spacing and fonts can differ a little from Word. Use Download for the exact file.'; })
+    .catch(function () { note.textContent = 'The document could not be shown here. Use Download instead.'; });
+})();
+</script>
+<% } %>
+<%- include('partials/footer') %>

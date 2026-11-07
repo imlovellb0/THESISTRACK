@@ -1,36 +1,9 @@
 const router = require('express').Router();
-const multer = require('multer');
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
 const db = require('../db');
 const L = require('../lib');
 const { csrfCheck } = require('../middleware');
 
-// ---------- upload settings: PDF, DOC, DOCX up to 10 MB, saved under a random name ----------
-const ALLOWED = ['.pdf', '.doc', '.docx'];
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: db.UPLOAD_DIR,
-    filename: (req, file, cb) => cb(null, crypto.randomUUID() + path.extname(file.originalname).toLowerCase()),
-  }),
-  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
-  fileFilter: (req, file, cb) =>
-    ALLOWED.includes(path.extname(file.originalname).toLowerCase()) ? cb(null, true) : cb(new Error('WRONG_TYPE')),
-});
-const removeFile = (file) => file && fs.rmSync(file.path, { force: true });
-
-// Checks the first bytes, so a renamed .exe or .html is not accepted as a PDF or Word file.
-function looksLikeDocument(file) {
-  const head = Buffer.alloc(8);
-  const fd = fs.openSync(file.path, 'r');
-  fs.readSync(fd, head, 0, 8, 0);
-  fs.closeSync(fd);
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (ext === '.pdf') return head.subarray(0, 4).toString('latin1') === '%PDF';
-  if (ext === '.docx') return head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
-  return head.subarray(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0])); // .doc
-}
+const { upload, removeFile, looksLikeDocument } = require('../uploads');
 
 const me = (req) => db.get('SELECT id, name, email, student_no, avatar FROM users WHERE id = ?', [req.user.id]);
 
@@ -91,12 +64,12 @@ router.get('/', async (req, res) => {
       'SELECT COUNT(*) AS n FROM comments cm JOIN chapters c ON c.id = cm.chapter_id WHERE c.group_id = ? AND cm.resolved = 0',
       [g.id]
     )).n,
-    slots: L.SLOTS,
     next: L.nextUp(chapters),
     steps,
     stepsLeft: steps.filter((s) => !s.done).length,
     defenseIn: g.defense_date ? L.daysUntil(g.defense_date) : null,
     feed: await L.groupFeed(g.id),
+    result: await L.resultOf(g),
   });
 });
 
@@ -154,13 +127,15 @@ router.post('/group', async (req, res) => {
   if (!name || !title) {
     return res.status(400).render('student/no-group', { title: 'Create your thesis group', form: req.body, maxSize: L.MAX_GROUP_SIZE, error: 'Enter a group name and a thesis title.' });
   }
+  const cls = L.readClass(req.body);
+  if (cls.error) return res.status(400).render('student/no-group', { title: 'Create your thesis group', form: req.body, maxSize: L.MAX_GROUP_SIZE, error: cls.error });
   const results = [];
   let gid;
   await db.transaction(async () => {
-    gid = (await db.run('INSERT INTO thesis_groups (name, title, workspace_id, leader_id, join_code) VALUES (?, ?, ?, ?, ?)',
-      [name, title, req.user.workspace_id, req.user.id, await db.uniqueGroupCode()])).lastInsertRowid;
+    gid = (await db.run('INSERT INTO thesis_groups (name, title, course, year_level, section, workspace_id, leader_id, join_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, title, cls.value.course, cls.value.year_level, cls.value.section, req.user.workspace_id, req.user.id, await db.uniqueGroupCode()])).lastInsertRowid;
     await db.run('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [gid, req.user.id]);
-    await L.createChapters(gid);
+    await L.createChapters(gid, req.user.workspace_id);
     for (const email of parseEmails(req.body.emails)) results.push({ email, ...(await addByEmail({ id: gid, name }, email, req.user)) });
   });
   await L.log(req.user.id, `created the group ${name}`);
@@ -222,6 +197,17 @@ router.post('/group/members', leaderOnly, async (req, res) => {
   const added = results.filter((r) => r.result === 'added');
   if (added.length) await L.log(req.user.id, `added ${added.map((r) => r.name).join(', ')} to ${req.group.name}`);
   reportAdds(req, results);
+  res.redirect('/student');
+});
+
+router.post('/group/class', leaderOnly, async (req, res) => {
+  const cls = L.readClass(req.body);
+  if (cls.error) req.flash('error', cls.error);
+  else {
+    await db.run('UPDATE thesis_groups SET course = ?, year_level = ?, section = ? WHERE id = ?', [cls.value.course, cls.value.year_level, cls.value.section, req.group.id]);
+    await L.log(req.user.id, `updated the class of ${req.group.name}`);
+    req.flash('ok', "The group's course, year level and section were saved.");
+  }
   res.redirect('/student');
 });
 
@@ -302,8 +288,9 @@ router.get('/chapter/:n', async (req, res) => {
       'SELECT cm.*, u.name AS author FROM comments cm JOIN users u ON u.id = cm.author_id WHERE cm.chapter_id = ? ORDER BY cm.id',
       [c.id]
     ),
+    marked: await L.markedFilesOf(c.id),
     canUpload: ['none', 'revision', 'rejected'].includes(c.status),
-    guide: L.CH_GUIDE[n - 1] || [],
+    guide: res.locals.chGuide[n - 1] || [],
   });
 });
 
@@ -365,7 +352,7 @@ router.post('/consultations', async (req, res) => {
   const topic = String(req.body.topic || '').trim();
   if (!req.group.adviser_id) req.flash('error', 'You can book after the coordinator assigns your adviser.');
   else if (!L.isDate(date) || date < L.today()) req.flash('error', 'Pick a date from today onward.');
-  else if (!L.SLOTS.includes(slot)) req.flash('error', 'Pick one of the listed time slots.');
+  else if (!L.isTime(slot)) req.flash('error', 'Enter a valid time for the consultation.');
   else if (!topic) req.flash('error', 'Add a topic for the meeting.');
   else {
     await db.run('INSERT INTO consultations (group_id, adviser_id, date, slot, topic) VALUES (?, ?, ?, ?, ?)',

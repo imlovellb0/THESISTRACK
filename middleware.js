@@ -26,6 +26,6 @@ const csrfCheck = (req, res, next) => {
   next();
 };
 
-const homeFor = (user) => ({ student: '/student', adviser: '/adviser', admin: '/admin', superadmin: '/system' }[user.role]);
+const homeFor = (user) => ({ student: '/student', adviser: '/adviser', panel: '/panel', admin: '/admin', superadmin: '/system' }[user.role]);
 
 module.exports = { requireLogin, requireRole, csrfCheck, homeFor };

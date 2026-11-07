@@ -1,6 +1,7 @@
 <%- include('partials/header') %>
 <div class="authwrap">
   <section class="card">
+<%- include('partials/back', { href: '/login', label: 'Back to sign in' }) %>
     <h1>Choose a new password</h1>
     <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
     <form class="stack" method="post" action="/reset/<%= token %>">

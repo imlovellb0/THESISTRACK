@@ -39,13 +39,33 @@ button,input,select,textarea{font:inherit;font-family:var(--font-ui);font-size:.
 .usernav form{display:inline}
 .usernav a.muted{color:#C5CEE0;text-decoration:none}
 .usernav a.muted:hover{color:#fff;text-decoration:underline}
-.bell{position:relative;text-decoration:none;color:#F4F5F7;font-weight:500}
+/* group picker: the list of groups stays hidden until the coordinator hovers (or tabs/taps) it */
+.grouppick{position:relative;display:inline-block;max-width:100%}
+.pickbtn{display:inline-block;padding:8px 12px;border:1px solid var(--line,#c9ced8);border-radius:4px;background:#fff;cursor:pointer;font-size:.9rem}
+.checks.pickpanel{flex-wrap:nowrap}
+.pickpanel,.checks.pickpanel{display:none;position:absolute;left:0;top:100%;z-index:6;min-width:260px;max-height:260px;overflow-y:auto;padding:10px 12px;background:#fff;border:1px solid var(--line,#c9ced8);border-radius:4px;box-shadow:0 8px 20px rgba(0,0,0,.18);flex-direction:column;gap:6px}
+.grouppick:hover .pickpanel,.grouppick:focus-within .pickpanel{display:flex}
+.bell{position:relative;display:inline-flex;align-items:center;text-decoration:none;color:#F4F5F7;padding:4px}
+.bell:hover{color:var(--gold)}
+.belldot{position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:#E5312B;border:2px solid #14264A;box-sizing:content-box}
+.usernav{margin-left:auto}
+.nav .caret{font-size:.7rem;opacity:.8}
+.navdrop{position:relative}
+.dropmenu{display:none;position:absolute;left:0;top:100%;min-width:200px;padding-top:6px;z-index:10}
+.dropmenu::before{content:"";position:absolute;inset:6px 0 0 0;background:#14264A;border:1px solid #2B3F6B;border-top:3px solid var(--gold);border-radius:2px;box-shadow:0 8px 20px rgba(0,0,0,.35);z-index:-1}
+.navdrop:hover .dropmenu,.navdrop:focus-within .dropmenu{display:flex;flex-direction:column;padding:10px 6px 6px}
+.dropmenu a{padding:8px 14px}
+.dropmenu a:hover{background:rgba(255,255,255,.08)}
+.nav.hasmenu{overflow:visible!important}
 .badge{background:var(--bad);color:#fff;border-radius:99px;font-size:.7rem;padding:0 6px;line-height:1.2rem;display:inline-block;min-width:1.2rem;text-align:center}
 
 .page{max-width:1120px;margin:18px auto 0;display:flex;flex-direction:column;gap:16px}
 .pagehead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px 16px}
 .crumbs{font-size:.85rem;color:var(--muted)}
 .crumbs a{color:var(--muted)}
+.backbtn{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink);font-family:var(--font-ui);font-size:.88rem;font-weight:600;text-decoration:none}
+.backbtn:hover{border-color:var(--gold);background:var(--surface-2)}
+.authwrap .backbtn{margin-bottom:10px}
 .flash{padding:10px 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface);border-left:4px solid var(--info)}
 .flash.ok{border-left-color:var(--good)}
 .flash.warn{border-left-color:var(--warn)}
@@ -112,6 +132,10 @@ form.stack{display:flex;flex-direction:column;gap:10px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:12px 14px}
 .stat b{display:block;font-family:var(--font-display);font-size:1.8rem;line-height:1.1;font-variant-numeric:tabular-nums}
 .stat span{font-size:.8rem;color:var(--muted)}
+/* a tile that opens the details behind its number */
+a.stat.link{display:block;color:inherit;text-decoration:none;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+a.stat.link:hover,a.stat.link:focus-visible{border-color:var(--gold);box-shadow:0 2px 10px rgba(0,0,0,.12);transform:translateY(-1px)}
+a.stat.link span::after{content:" \2192";opacity:.55}
 
 .thread{display:flex;flex-direction:column;gap:10px}
 .msg{border-left:3px solid var(--accent);padding:2px 0 2px 10px}
@@ -200,23 +224,10 @@ body:has(.flock){overflow-x:hidden}
 }
 
 
-/* AI check page and chatbot */
-.quotes{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+/* AI check page */
 .fix{padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .fix .was{text-decoration:line-through;color:var(--bad)}
 .fix .now{color:var(--good);font-weight:600}
-.chat-open{position:fixed;right:16px;bottom:16px;z-index:20;padding:10px 16px;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font:600 .9rem var(--font-ui);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.chat{position:fixed;right:16px;bottom:64px;z-index:20;width:min(360px,calc(100vw - 32px));max-height:min(520px,calc(100vh - 100px));display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.28)}
-.chat[hidden]{display:none}
-.chat>header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
-.chat-log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.bubble{max-width:85%;padding:8px 12px;border-radius:14px;font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere}
-.bubble.bot{align-self:flex-start;background:var(--surface-2)}
-.bubble.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}
-.chat-form{display:flex;gap:8px;padding:8px 12px}
-.chat-form input{flex:1;min-width:0}
-.chat-note{margin:0;padding:0 12px 10px}
-@media print{.chat,.chat-open{display:none!important}}
 
 /* Phones: chapter and group tables become one card per row, so nothing scrolls sideways. */
 @media (max-width:640px){
@@ -339,6 +350,7 @@ body:has(.authwrap) .foot a{color:#C5CEE0}
 /* Profile pictures and the student home page */
 .avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:50%;object-fit:cover;background:var(--accent);color:var(--accent-ink);font-family:var(--font-ui);font-weight:600;border:2px solid var(--gold);vertical-align:middle}
 .avatar.xs{width:26px;height:26px;font-size:.68rem;border-width:1px}
+.avatar.md{width:44px;height:44px;font-size:.95rem}
 .avatar.sm{width:34px;height:34px;font-size:.8rem;border-width:1px}
 .avatar.lg{width:112px;height:112px;font-size:2.2rem}
 .profilehead{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
@@ -414,3 +426,36 @@ body:has(.authwrap) .foot a{color:#C5CEE0}
 .rolelist li[aria-selected="true"]::after{content:" ¹3"}
 .rolefield{position:relative;z-index:40} /* the open list must paint above the fields below it */
 .joinlinks p{margin:0 0 6px}
+.pickchosen{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+.chrow.removed{opacity:.55}
+.chrow.removed input[type=text],.chrow.removed textarea{text-decoration:line-through}
+
+/* coordinator chapter row: status, deadline and Save sit on one line */
+.chform{flex-wrap:nowrap;white-space:nowrap}
+.chform select{width:9.5rem;flex:none}
+.chform input[type=date]{width:10.5rem;flex:none}
+@media (max-width:640px){.chform{flex-wrap:wrap}}
+
+/* sign-in message: red box inside the card with a short shake */
+.loginalert{padding:10px 12px;margin:8px 0 12px;border-radius:6px;border:1px solid var(--bad);border-left-width:5px;background:rgba(229,49,43,.12);overflow-wrap:anywhere}
+.loginalert.info{border-color:var(--info);background:rgba(60,110,200,.12)}
+.loginalert.bad{animation:loginshake .4s}
+@keyframes loginshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.loginalert.bad{animation:none}}
+
+.pdfview{display:block;width:100%;height:78vh;min-height:420px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.docview{overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px}
+.docview .docx-wrapper{background:transparent!important;padding:8px!important}
+
+.quotes{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+
+details.notif-group>summary{list-style:none;cursor:pointer;margin-bottom:0}
+details.notif-group>summary::-webkit-details-marker{display:none}
+details.notif-group>summary::after{content:"BE";margin-left:auto;color:var(--muted);transition:transform .15s}
+details.notif-group[open]>summary::after{transform:rotate(180deg)}
+details.notif-group>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.bell{position:relative}
+.bellbadge{position:absolute;top:-6px;right:-8px}
+
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--link, #2563eb); text-decoration: underline; cursor: pointer; }

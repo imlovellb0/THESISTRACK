@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+<div class="authwrap">
+  <section class="card">
+<%- include('partials/back', { href: '/account', label: 'Back to my account' }) %>
+    <h1>Confirm your password change</h1>
+    <p class="small muted">We sent a 6-digit code to <strong><%= user.email %></strong>. It works for <%= minutes %> minutes. Your password changes once you enter it.</p>
+    <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+    <form class="stack" method="post" action="/account/password/verify">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>6-digit code</span><input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="123456" required autofocus></label>
+      <button class="btn primary" type="submit">Confirm and change password</button>
+    </form>
+    <form method="post" action="/account/password/resend" class="small">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      Did not get it? Check spam, or <button class="btn sm" type="submit">send a new code</button>
+    </form>
+  </section>
+</div>
+<%- include('partials/footer') %>

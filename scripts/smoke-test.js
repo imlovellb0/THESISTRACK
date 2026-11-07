@@ -55,10 +55,14 @@ class Client {
 }
 
 (async () => {
-  // ----- sign in -----
-  const wrongRole = new Client();
-  const wr = await wrongRole.post('/login', { email: 'juan@student.edu.ph', password: 'password123', role: 'admin' }, '/login');
-  check(wr.loc === '/login' && !(await wrongRole.page('/admin')).body.includes('Overview'), 'a student cannot sign in as a coordinator');
+  // ----- sign in: the account decides the role; a role sent by the client is ignored -----
+  const forged = new Client();
+  const fr = await forged.post('/login', { email: 'juan@student.edu.ph', password: 'password123', role: 'admin' }, '/login');
+  check(fr.loc === '/student' && (await forged.page('/admin')).status === 403, 'a student who sends role=admin still lands on /student and cannot open /admin');
+  for (const [email, home] of [['reyes@school.edu.ph', '/adviser'], ['cruz@school.edu.ph', '/panel'], ['admin@school.edu.ph', '/admin']]) {
+    const c = new Client();
+    check((await c.login(email)).loc === home, `${email} signs in without choosing a role and lands on ${home}`);
+  }
   const bad = new Client();
   let r = await bad.login('juan@student.edu.ph', 'wrong-password');
   check(r.loc === '/login', 'wrong password is refused');
@@ -151,17 +155,18 @@ class Client {
   check((await reyes.page('/adviser/group/1')).body.includes('IT-101') && !(await reyes.page('/adviser/group/1')).body.includes('Elena Cruz'), 'advisers do not see the panel members');
   check((await admin.page('/admin/groups/1')).body.includes('Elena Cruz'), 'the coordinator sees the panel members');
   r = await new Client().post('/login', { email: 'cruz@school.edu.ph', password: 'password123' }, '/login');
-  check(r.loc === '/login', 'panel members cannot sign in');
+  check(r.loc === '/panel', 'a panel member signs in and lands on /panel');
   r = await admin.post('/admin/users', { name: 'Engr. Panel Added', email: 'panel.added@school.edu.ph', role: 'panel', password: '' }, '/admin/users');
   check(r.loc === '/admin/users' && (await admin.page('/admin/groups/1')).body.includes('Engr. Panel Added'), 'coordinator adds a panel member without a password and can assign them');
+  r = await new Client().post('/login', { email: 'panel.added@school.edu.ph', password: '' }, '/login');
+  check(r.loc === '/login', 'a panel record that never registered cannot sign in');
 
-  // panel members page: add, edit, deactivate, remove
+  // panel members page: edit, deactivate, remove
   check((await admin.page('/admin/panel')).body.includes('Dr. Elena Cruz'), 'coordinator sees the panel members page');
-  await admin.post('/admin/panel', { name: 'Dr. New Panelist', email: 'new.panelist@school.edu.ph' }, '/admin/panel');
+  check((await admin.post('/admin/panel', { name: 'Dr. New Panelist', email: 'new.panelist@school.edu.ph' }, '/admin/panel')).status === 404, 'the add-a-record-only form is gone; panel members join by invitation');
   p = await admin.page('/admin/panel');
-  check(p.body.includes('Dr. New Panelist'), 'coordinator adds a panel member');
-  const pid = new RegExp('id="edit(\\d+)"(?:(?!id="edit)[^])*?value="Dr\\. New Panelist"').exec(p.body)?.[1];
-  await admin.post(`/admin/panel/${pid}`, { name: 'Dr. Renamed Panelist', email: 'new.panelist@school.edu.ph' }, '/admin/panel');
+  const pid = new RegExp('id="edit(\\d+)"(?:(?!id="edit)[^])*?value="Engr\\. Panel Added"').exec(p.body)?.[1];
+  await admin.post(`/admin/panel/${pid}`, { name: 'Dr. Renamed Panelist', email: 'panel.added@school.edu.ph' }, '/admin/panel');
   check((await admin.page('/admin/panel')).body.includes('Dr. Renamed Panelist'), 'coordinator edits a panel member');
   await admin.post(`/admin/panel/${pid}`, { name: 'Dr. Renamed Panelist', email: 'cruz@school.edu.ph' }, '/admin/panel');
   check((await admin.page('/admin/panel')).body.includes('already used'), 'editing to an email another account uses is refused');
@@ -254,7 +259,7 @@ class Client {
     const res = await client.req('/register', { method: 'POST', body: fd });
     return { status: res.status, loc: res.headers.get('location'), body: res.status < 300 ? '' : await res.text() };
   };
-  const ninaFields = { name: 'Nina Ocampo', student_no: '2024-0100', email: 'nina@student.edu.ph', password: 'password123', confirm: 'password123' };
+  const ninaFields = { course: 'IT', year_level: '4', section: '4B', name: 'Nina Ocampo', student_no: '2024-0100', email: 'nina@student.edu.ph', password: 'password123', confirm: 'password123' };
   r = await reg(new Client(), ninaFields, null);
   check(r.status === 400 && r.body.includes('photo of your student ID'), 'registration without an ID photo is refused');
   r = await reg(new Client(), ninaFields, Buffer.from('not an image at all'), 'fake.jpg');
@@ -273,7 +278,7 @@ class Client {
   check((await new Client().page(`/id-photo/${photoId}`)).loc === '/login', 'a signed-out visitor cannot open the ID photo');
   p = await fresh.page('/student');
   check(p.body.includes('Nina Ocampo') && p.body.includes('2024-0100') && p.body.includes('Create a group'), 'new student sees their profile and the choice to create or join a group');
-  await fresh.post('/student/group', { name: 'Team Bagwis', title: 'Campus Lost and Found Portal', emails: 'rico@student.edu.ph, juan@student.edu.ph' }, '/student');
+  await fresh.post('/student/group', { course: 'IT', year_level: '4', section: '4B', name: 'Team Bagwis', title: 'Campus Lost and Found Portal', emails: 'rico@student.edu.ph, juan@student.edu.ph' }, '/student');
   p = await fresh.page('/student');
   check(p.body.includes('Team Bagwis') && p.body.includes('Rico Mangubat') && !p.body.includes('Juan Dela Cruz'), 'group is created; members already in a group are skipped');
 
@@ -311,7 +316,7 @@ class Client {
   const noConsent = new Client();
   const fdc = new FormData();
   fdc.append('_csrf', await noConsent.token('/register'));
-  for (const [k, v] of Object.entries({ join_code: joinCode, name: 'Zed Cruz', student_no: '2024-0777', email: 'zed@student.edu.ph', password: 'password123', confirm: 'password123' })) fdc.append(k, v);
+  for (const [k, v] of Object.entries({ join_code: joinCode, course: 'IT', year_level: '4', section: '4B', name: 'Zed Cruz', student_no: '2024-0777', email: 'zed@student.edu.ph', password: 'password123', confirm: 'password123' })) fdc.append(k, v);
   fdc.append('id_photo', new Blob([png]), 'id.png');
   const rc = await noConsent.req('/register', { method: 'POST', body: fdc });
   check(rc.status === 400 && (await rc.text()).includes('Privacy Notice'), 'registration without agreeing to the privacy notice is refused');
@@ -343,11 +348,7 @@ class Client {
   check((await fresh.page('/admin/audit')).status === 403, 'students cannot open the activity log');
 
   p = await admin.page('/notifications');
-  const nid = /\/notifications\/(\d+)\/delete/.exec(p.body)?.[1];
-  await admin.post(`/notifications/${nid}/delete`, {}, '/notifications');
-  check(!(await admin.page('/notifications')).body.includes(`/notifications/${nid}/delete`), 'a notification can be deleted');
-  await admin.post('/notifications/clear', {}, '/notifications');
-  check((await admin.page('/notifications')).body.includes('Nothing yet'), 'all notifications can be cleared');
+  check(!p.body.includes('/delete') && !p.body.includes('/notifications/clear'), 'notifications cannot be deleted or cleared');
 
   console.log(failed ? `\n${failed} check(s) failed.` : '\nAll checks passed.');
   process.exit(failed ? 1 : 0);

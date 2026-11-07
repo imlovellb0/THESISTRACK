@@ -1,6 +1,7 @@
 <%- include('partials/header') %>
 <div class="authwrap">
   <section class="card">
+<%- include('partials/back', { href: '/login', label: 'Back to sign in' }) %>
     <h1>Adviser registration</h1>
     <p class="small muted">Only advisers invited by the coordinator can register. Use the email the coordinator invited and the 6-digit code sent to it.</p>
     <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>

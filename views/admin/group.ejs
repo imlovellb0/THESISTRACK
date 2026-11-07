@@ -1,7 +1,9 @@
 <%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/admin/groups', label: 'Back to groups' }) %>
 <div>
   <div class="crumbs"><a href="/admin/groups">Groups</a> / <%= g.name %></div>
-  <div class="pagehead"><h1><%= g.title %></h1><%- L.hpill(g.health) %></div>
+  <div class="pagehead"><h1><%= g.title %></h1><%- L.hpill(g.health) %> <%- L.readyPill(g.readiness) %></div>
+  <% if (L.classLabel(g)) { %><p class="small muted">Class: <b><%= L.classLabel(g) %></b></p><% } %>
   <p class="muted small"><%= members.map(m => m.name + (m.is_leader ? ' (leader)' : '')).join(', ') %></p>
 </div>
 <% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
@@ -20,6 +22,8 @@
     <% } %>
     <% if (pending) { %><p class="small"><span class="pill info">Waiting</span> <%= requests.find(r => r.id === pending.id).adviser_name %> has not answered yet.<% if (g.adviser_id) { %> Until then the current adviser stays.<% } %></p><% } %>
 
+    <%- include('../partials/class-fields', { v: g, optional: true }) %>
+
     <div class="field"><span>Panel members <span class="hint">(choose at least two to schedule a defense)</span></span>
       <div class="checks">
         <% panelists.forEach(p => { %>
@@ -32,9 +36,7 @@
     <div class="fields">
       <label class="field"><span>Defense date</span><input type="date" name="defense_date" value="<%= g.defense_date || '' %>"></label>
       <label class="field"><span>Time</span>
-        <select name="defense_time">
-          <% L.SLOTS.forEach(s => { %><option <%= s === g.defense_time ? 'selected' : '' %>><%= s %></option><% }) %>
-        </select></label>
+        <input type="time" name="defense_time" value="<%= g.defense_time || '' %>"></label>
       <label class="field"><span>Room</span><input type="text" name="room" value="<%= g.room || '' %>" maxlength="60" placeholder="IT-204"></label>
     </div>
     <p class="small muted">Leave the date empty to keep the defense unscheduled.</p>
@@ -59,14 +61,27 @@
 </section>
 <% } %>
 
-<section class="card">
-  <header><h2>Chapters</h2></header>
+<section class="card" id="chapters">
+  <header><h2>Contents</h2></header>
+  <p class="small muted">Set a chapter to Approved or Disapproved, and change its deadline. The group is notified of any change.</p>
   <div class="tablewrap"><table class="cards">
-    <thead><tr><th>Chapter</th><th>Status</th><th>Deadline</th><th>Latest file</th></tr></thead>
+    <thead><tr><th>content</th><th>Status</th><th>Deadline</th><th>Latest file</th></tr></thead>
     <tbody>
     <% g.chapters.forEach(c => { %>
-      <tr><td><%= c.number %>. <%= L.CH_NAMES[c.number - 1] %></td><td data-label="Status"><%- L.pill(c.status) %></td>
-        <td data-label="Deadline"><%= L.fmtDate(c.deadline) %><% if (L.isOverdue(c)) { %> <span class="pill bad">Overdue</span><% } %></td>
+      <tr><td><%= c.number %>. <%= chNames[c.number - 1] %></td>
+        <td data-label="Status" colspan="2">
+          <form class="row chform" method="post" action="/admin/groups/<%= g.id %>/chapter/<%= c.number %>">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <select name="status" aria-label="Status of chapter <%= c.number %>">
+              <% if (!['approved', 'rejected'].includes(c.status)) { %><option value="<%= c.status %>" selected><%= L.STATUS[c.status].label %></option><% } %>
+              <option value="approved" <%= c.status === 'approved' ? 'selected' : '' %>>Approved</option>
+              <option value="rejected" <%= c.status === 'rejected' ? 'selected' : '' %>>Disapproved</option>
+            </select>
+            <input type="date" name="deadline" value="<%= c.deadline ? String(c.deadline).slice(0, 10) : '' %>" aria-label="Deadline of chapter <%= c.number %>">
+            <button class="btn sm primary" type="submit">Save</button>
+            <% if (L.isOverdue(c)) { %><span class="pill bad">Overdue</span><% } %>
+          </form>
+        </td>
         <td data-label="File"><% if (c.latest_id) { %><a href="/files/<%= c.latest_id %>"><%= c.latest_name %></a> &middot; <a class="small" href="/ai/submission/<%= c.latest_id %>">AI check</a><% } else { %><span class="muted small">None</span><% } %></td></tr>
     <% }) %>
     </tbody>

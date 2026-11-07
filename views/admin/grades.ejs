@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Panel grades</h1><span class="muted small">Each panelist scores a group on the rubric and submits the sheet to you. The group's grade is the average of the submitted sheets.</span></div>
+<div class="layout">
+<section class="card">
+  <header><h2>Groups</h2></header>
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Group</th><th>Defense</th><th>Sheets in</th><th class="num">Average</th></tr></thead>
+    <tbody>
+    <% groups.forEach(g => { %>
+      <tr>
+        <td><a href="/admin/grades/<%= g.id %>"><b><%= g.name %></b></a></td>
+        <td data-label="Defense"><%= g.defense_date ? L.fmtDate(g.defense_date) : 'Not scheduled' %></td>
+        <td data-label="Sheets in"><%= g.submitted.length %> of <%= g.assigned.length %>
+          <% if (g.assigned.length && g.submitted.length === g.assigned.length) { %><span class="pill good">Complete</span><% } %></td>
+        <td class="num" data-label="Average"><%= g.average === null ? '-' : g.average.toFixed(2) %></td>
+      </tr>
+    <% }) %>
+    <% if (!groups.length) { %><tr><td colspan="4" class="muted">No groups yet.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <header><h2>Rubric</h2></header>
+  <form class="stack" method="post" action="/admin/grades/rubric">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% for (let i = 0; i < 8; i++) { const c = rubric[i]; %>
+      <div class="row"><input type="text" name="title" maxlength="120" value="<%= c ? c.title : '' %>" placeholder="Criterion <%= i + 1 %>" aria-label="Criterion <%= i + 1 %>">
+        <input type="number" name="max" min="1" max="100" step="1" value="<%= c ? c.max : '' %>" placeholder="Max" style="width:5em" aria-label="Maximum for criterion <%= i + 1 %>"></div>
+    <% } %>
+    <p class="small muted">Leave a row empty to drop it. The maximums must add up to 100. Sheets already started keep their original criteria.</p>
+    <button class="btn primary" type="submit">Save rubric</button>
+  </form>
+</section>
+</div>
+<%- include('../partials/footer') %>

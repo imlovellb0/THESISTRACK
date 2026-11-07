@@ -1,10 +1,12 @@
 <%- include('partials/header') %>
+<%- include('partials/back', { href: '/', label: 'Back', hist: true }) %>
 <div class="pagehead"><h1>My profile</h1></div>
 <section class="card" style="max-width:36rem">
   <div class="profilehead">
     <%- include('partials/avatar', { u: me, size: 'lg' }) %>
     <div>
       <h2 style="margin:0 0 4px"><%= me.name %></h2>
+      <% if (me.role === 'student' && L.classLabel(me)) { %><div class="small">Class <b><%= L.classLabel(me) %></b></div><% } %>
       <% if (me.role === 'student') { %><div class="small">Student ID <b class="mono"><%= me.student_no || 'not recorded' %></b></div>
       <% } else { %><div class="small"><%= L.ROLE_LABEL[me.role] %><% if (workspace) { %> · <%= workspace.name %><% } %></div><% } %>
       <div class="small muted"><%= me.email %></div>
@@ -19,6 +21,13 @@
       <button class="btn primary" type="submit"><%= me.avatar ? 'Replace photo' : 'Upload photo' %></button>
     </div>
   </form>
+  <% if (me.role === 'student') { %>
+  <form class="stack" method="post" action="/profile/class">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <%- include('partials/class-fields', { v: me }) %>
+    <div class="row"><button class="btn primary" type="submit">Save course and section</button></div>
+  </form>
+  <% } %>
   <% if (me.avatar) { %>
   <form method="post" action="/profile/avatar/delete">
     <input type="hidden" name="_csrf" value="<%= csrf %>">

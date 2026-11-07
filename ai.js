@@ -1,4 +1,4 @@
-// Free AI for grammar suggestions and the chatbot. Nothing here costs money:
+// Free AI for grammar suggestions. Nothing here costs money:
 //   GEMINI_API_KEY  - a free key from https://aistudio.google.com/apikey (the free tier has daily limits)
 //   GEMINI_MODEL    - optional, default gemini-3.8-flash. Change it if Google retires the model.
 //   OLLAMA_MODEL    - optional alternative that runs on this computer (https://ollama.com), e.g. qwen2.5:3b

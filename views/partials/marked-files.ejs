@@ -1,0 +1,13 @@
+<%# Files the adviser attached to a chapter. Pass marked, c and (for the adviser) g and canManage. %>
+<% if (!marked.length) { %><p class="muted small">No marked files yet.</p><% } %>
+<ul class="list">
+  <% marked.forEach(f => { %>
+    <li><span><b><%= f.original_name %></b><% if (f.version_no) { %> <span class="small muted">(on v<%= f.version_no %>)</span><% } %>
+      <% if (f.note) { %><br><span class="small"><%= f.note %></span><% } %></span>
+      <span class="small muted"><%= f.by_name %> &middot; <%= L.fmtDateTime(f.created_at) %> &middot;
+        <% if (/\.(pdf|docx)$/i.test(f.stored_name)) { %><a href="/viewer/marked/<%= f.id %>">View</a> &middot; <% } %><a href="/marked/<%= f.id %>">Download</a>
+        <% if (locals.canManage) { %>
+          <form method="post" action="/adviser/group/<%= g.id %>/chapter/<%= c.number %>/marked/<%= f.id %>/delete" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Remove this file?')">Remove</button></form>
+        <% } %></span></li>
+  <% }) %>
+</ul>

@@ -37,9 +37,24 @@ const TABLES = [
     join_code  VARCHAR(12) NOT NULL UNIQUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
+  // A coordinator can only ask for the workspace to be deleted. The system administrator approves (which suspends it for a grace period) or rejects.
+  `CREATE TABLE IF NOT EXISTS workspace_deletions (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    workspace_id   INT NOT NULL,
+    requested_by   INT NULL,
+    requested_name VARCHAR(255) NOT NULL,
+    reason         TEXT NOT NULL,
+    status         ENUM('Pending','Approved','Rejected','Cancelled','Reversed') NOT NULL DEFAULT 'Pending',
+    decision_note  TEXT NULL,
+    decided_at     DATETIME NULL,
+    delete_after   DATETIME NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX (workspace_id),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (
     name  VARCHAR(60) NOT NULL PRIMARY KEY,
-    value VARCHAR(255) NOT NULL
+    value TEXT NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,6 +92,23 @@ const TABLES = [
     used_at    DATETIME NULL,
     INDEX (email),
     FOREIGN KEY (invited_by) REFERENCES users(id)
+  )`,
+  // The coordinator invites each panelist. Same rules as advisers: a 6-digit code, tied to one email, stored hashed.
+  `CREATE TABLE IF NOT EXISTS panel_invites (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(255) NOT NULL,
+    email        VARCHAR(190) NOT NULL,
+    status       ENUM('Invited','Registered','Cancelled') NOT NULL DEFAULT 'Invited',
+    otp_hash     VARCHAR(255) NOT NULL,
+    expires_at   DATETIME NOT NULL,
+    attempts     INT NOT NULL DEFAULT 0,
+    invited_by   INT NULL,
+    workspace_id INT NULL,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    used_at      DATETIME NULL,
+    INDEX (email),
+    INDEX (workspace_id),
+    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL
   )`,
   // The system administrator invites each new coordinator. The code is single-use, tied to one email, and stored hashed.
   `CREATE TABLE IF NOT EXISTS coordinator_invites (
@@ -129,6 +161,45 @@ const TABLES = [
     FOREIGN KEY (group_id) REFERENCES thesis_groups(id) ON DELETE CASCADE,
     FOREIGN KEY (panel_id) REFERENCES users(id)
   )`,
+  // One score sheet per panelist per group. The criteria and their maximums are copied into the sheet's rows, so a later change to the rubric never alters a submitted grade.
+  `CREATE TABLE IF NOT EXISTS panel_grades (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    group_id     INT NOT NULL,
+    panel_id     INT NOT NULL,
+    status       ENUM('Draft','Submitted','Returned') NOT NULL DEFAULT 'Draft',
+    outcome      ENUM('Passed','Passed with revisions','Failed') NULL,
+    remarks      TEXT NULL,
+    return_note  TEXT NULL,
+    total        DECIMAL(6,2) NOT NULL DEFAULT 0,
+    submitted_at DATETIME NULL,
+    updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_sheet (group_id, panel_id),
+    FOREIGN KEY (group_id) REFERENCES thesis_groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (panel_id) REFERENCES users(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS panel_grade_scores (
+    grade_id  INT NOT NULL,
+    position  INT NOT NULL,
+    title     VARCHAR(120) NOT NULL,
+    max_score INT NOT NULL,
+    score     DECIMAL(5,2) NULL,
+    PRIMARY KEY (grade_id, position),
+    FOREIGN KEY (grade_id) REFERENCES panel_grades(id) ON DELETE CASCADE
+  )`,
+  // Every release of the defense result to a group, and every later correction, kept for the record.
+  `CREATE TABLE IF NOT EXISTS result_history (
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    group_id         INT NOT NULL,
+    released_by      INT NOT NULL,
+    kind             VARCHAR(10) NOT NULL,
+    outcome          VARCHAR(30) NOT NULL,
+    previous_outcome VARCHAR(30) NULL,
+    note             TEXT NULL,
+    average          DECIMAL(6,2) NULL,
+    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES thesis_groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (released_by) REFERENCES users(id)
+  )`,
   `CREATE TABLE IF NOT EXISTS chapters (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     group_id  INT NOT NULL,
@@ -159,6 +230,20 @@ const TABLES = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
     FOREIGN KEY (author_id) REFERENCES users(id)
+  )`,
+  // A file the adviser attaches to a chapter, for example a PDF marked up with what to revise.
+  `CREATE TABLE IF NOT EXISTS adviser_files (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    chapter_id    INT NOT NULL,
+    submission_id INT NULL,
+    uploaded_by   INT NOT NULL,
+    original_name TEXT NOT NULL,
+    stored_name   VARCHAR(100) NOT NULL,
+    note          VARCHAR(500) NULL,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
+    FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE SET NULL,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id)
   )`,
   `CREATE TABLE IF NOT EXISTS consultations (
     id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -210,6 +295,33 @@ const TABLES = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX (token_hash),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`,
+  // A password change waits here until the 6-digit code emailed to the account is entered.
+  `CREATE TABLE IF NOT EXISTS password_changes (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    user_id       INT NOT NULL UNIQUE,
+    new_hash      VARCHAR(255) NOT NULL,
+    code_hash     VARCHAR(255) NOT NULL,
+    attempts      INT NOT NULL DEFAULT 0,
+    expires_at    DATETIME NOT NULL,
+    sent_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`,
+  // A student signup waits here until the 6-digit code emailed to the address is entered. Only then is the account created.
+  `CREATE TABLE IF NOT EXISTS student_signups (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    email         VARCHAR(190) NOT NULL,
+    name          VARCHAR(255) NOT NULL,
+    student_no    VARCHAR(30) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    id_photo      VARCHAR(255) NOT NULL,
+    workspace_id  INT NOT NULL,
+    code_hash     VARCHAR(255) NOT NULL,
+    attempts      INT NOT NULL DEFAULT 0,
+    expires_at    DATETIME NOT NULL,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_per_email (email)
   )`,
   // Messages: one thread per thesis group (members, adviser, coordinator) and one private thread per student or adviser with the coordinator.
   `CREATE TABLE IF NOT EXISTS conversations (
@@ -281,18 +393,43 @@ async function init({ reset = false } = {}) {
   for (const sql of TABLES) await pool.query(sql);
 
   // Databases created before these columns existed get them added here.
+  await addColumnIfMissing('password_resets', 'attempts', 'INT NOT NULL DEFAULT 0');
   await addColumnIfMissing('users', 'student_no', 'VARCHAR(30) NULL UNIQUE');
   await addColumnIfMissing('users', 'id_photo', 'VARCHAR(100) NULL');
   await addColumnIfMissing('users', 'consent_at', 'DATETIME NULL');
   await addColumnIfMissing('users', 'avatar', 'VARCHAR(100) NULL');
+  // Course, year level and section of a student (shown on the group pages), and the same on a group.
+  for (const t of ['users', 'student_signups', 'thesis_groups']) {
+    await addColumnIfMissing(t, 'course', 'VARCHAR(60) NULL');
+    await addColumnIfMissing(t, 'year_level', 'INT NULL');
+    await addColumnIfMissing(t, 'section', 'VARCHAR(10) NULL');
+  }
   // Groups have a join code and a leader. Members remember when they joined (used to pick the next leader).
   if (await addColumnIfMissing('thesis_groups', 'join_code', 'VARCHAR(10) NULL')) await pool.query('ALTER TABLE thesis_groups ADD UNIQUE (join_code)');
   await addColumnIfMissing('thesis_groups', 'leader_id', 'INT NULL');
+  // The adviser's final yes: set once all chapters are approved, needed before the coordinator can set a defense date.
+  await addColumnIfMissing('thesis_groups', 'endorsed_at', 'DATETIME NULL');
+  await addColumnIfMissing('thesis_groups', 'endorsed_by', 'INT NULL');
+  // The result the coordinator releases to the group after the defense.
+  await addColumnIfMissing('thesis_groups', 'result_outcome', 'VARCHAR(30) NULL');
+  await addColumnIfMissing('thesis_groups', 'result_note', 'TEXT NULL');
+  await addColumnIfMissing('thesis_groups', 'result_average', 'DECIMAL(6,2) NULL');
+  await addColumnIfMissing('thesis_groups', 'result_released_at', 'DATETIME NULL');
   await addColumnIfMissing('group_members', 'joined_at', 'DATETIME NULL DEFAULT CURRENT_TIMESTAMP');
+  // A workspace's chapter contents are saved as JSON in settings, which is far longer than 255 characters.
+  await pool.query('ALTER TABLE settings MODIFY value TEXT NOT NULL');
   // The system administrator role sits above every workspace. Its account has no workspace.
   await pool.query("ALTER TABLE users MODIFY role ENUM('student','adviser','panel','admin','superadmin') NOT NULL");
   await addColumnIfMissing('workspaces', 'active', 'INT NOT NULL DEFAULT 1');
   await addColumnIfMissing('announcements', 'broadcast_id', 'VARCHAR(16) NULL');
+  // A student's private thread with the adviser of their group. The adviser is looked up through the group, so reassigning the adviser needs no change here.
+  await pool.query("ALTER TABLE conversations MODIFY kind ENUM('group','direct','adviser') NOT NULL");
+  if (await addColumnIfMissing('conversations', 'student_id', 'INT NULL')) {
+    await pool.query('ALTER TABLE conversations ADD UNIQUE KEY one_per_student (student_id), ADD FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE');
+  }
+  // A message can carry one attached file.
+  await addColumnIfMissing('messages', 'file_name', 'VARCHAR(255) NULL');
+  await addColumnIfMissing('messages', 'file_stored', 'VARCHAR(100) NULL');
   await backfillGroups();
   await migrateWorkspaces();
   if (await addColumnIfMissing('notifications', 'source', "VARCHAR(12) NOT NULL DEFAULT 'system'")) await backfillNotificationSource();

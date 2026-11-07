@@ -7,8 +7,7 @@
   <ul class="list">
     <% items.forEach(n => { %>
       <li><b><%= n.title %></b><span class="small"><%= n.body %></span>
-        <span class="row small muted"><%= L.fmtDate(n.created_at) %> &middot; <%= n.workspace_count %> workspace<%= n.workspace_count === 1 ? '' : 's' %>
-          <form method="post" action="/system/announcements/<%= n.broadcast_id %>/delete"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn small" type="submit" onclick="return confirm('Remove this announcement from every workspace?')">Remove</button></form></span></li>
+        <span class="row small muted"><%= L.fmtDate(n.created_at) %> &middot; <%= n.workspace_count %> workspace<%= n.workspace_count === 1 ? '' : 's' %></span></li>
     <% }) %>
   </ul>
 </section>

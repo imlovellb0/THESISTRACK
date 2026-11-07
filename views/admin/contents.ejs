@@ -1,0 +1,56 @@
+<%- include('../partials/header') %>
+<div class="pagehead"><h1>Contents</h1></div>
+<% if (typeof error !== 'undefined') { %><div class="flash error"><%= error %></div><% } %>
+<form class="stack" method="post" action="/admin/contents" id="contentsform">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div id="rows" data-max="<%= max %>">
+  <% rows.forEach((c, i) => { %>
+  <section class="card chrow">
+    <header><h2 class="chlabel">Chapter</h2></header>
+    <input type="hidden" name="orig_<%= i %>" value="<%= c.orig || '' %>">
+    <label class="field"><span>Title</span><input type="text" name="title_<%= i %>" value="<%= c.title %>" maxlength="120" required></label>
+    <label class="field"><span>Outline <span class="hint">(one item per line, shown to students as a guide)</span></span>
+      <textarea name="items_<%= i %>" rows="5" maxlength="2600"><%= (c.items || []).join('\n') %></textarea></label>
+    <label class="check"><input type="checkbox" name="remove_<%= i %>" <%= c.remove ? 'checked' : '' %>> <span>Remove this chapter</span></label>
+  </section>
+  <% }) %>
+  </div>
+  <div class="row"><button class="btn" type="button" id="addrow">+ Add a chapter</button><span class="small muted">Up to <%= max %> chapters. New chapters are added to every group with no deadline.</span></div>
+  <label class="check"><input type="checkbox" name="confirm"> <span>I understand that removing a chapter deletes it, with its uploads, comments and status, for every group.</span></label>
+  <div class="row"><button class="btn primary" type="submit">Save contents</button><a class="btn" href="/admin">Cancel</a></div>
+</form>
+<template id="rowtpl">
+  <section class="card chrow">
+    <header><h2 class="chlabel">Chapter</h2></header>
+    <input type="hidden" name="orig_N" value="">
+    <label class="field"><span>Title</span><input type="text" name="title_N" maxlength="120" required></label>
+    <label class="field"><span>Outline <span class="hint">(one item per line, shown to students as a guide)</span></span>
+      <textarea name="items_N" rows="5" maxlength="2600"></textarea></label>
+    <label class="check"><input type="checkbox" name="remove_N"> <span>Remove this chapter</span></label>
+  </section>
+</template>
+<script>
+(function () {
+  var rows = document.getElementById('rows'), tpl = document.getElementById('rowtpl'), add = document.getElementById('addrow');
+  var max = Number(rows.dataset.max), next = rows.children.length;
+  function number() {
+    var live = 0;
+    Array.prototype.forEach.call(rows.children, function (sec) {
+      var gone = sec.querySelector('input[name^="remove_"]').checked;
+      sec.classList.toggle('removed', gone);
+      sec.querySelector('.chlabel').textContent = gone ? 'Chapter (will be removed)' : 'Chapter ' + (++live);
+    });
+    add.disabled = live >= max;
+  }
+  add.addEventListener('click', function () {
+    var html = tpl.innerHTML.replace(/_N"/g, '_' + (next++) + '"');
+    var wrap = document.createElement('div'); wrap.innerHTML = html;
+    rows.appendChild(wrap.firstElementChild);
+    number();
+    rows.lastElementChild.querySelector('input[type=text]').focus();
+  });
+  rows.addEventListener('change', number);
+  number();
+})();
+</script>
+<%- include('../partials/footer') %>

@@ -1,0 +1,69 @@
+<%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/admin/grades', label: 'Back to panel grades' }) %>
+<div>
+  <div class="crumbs"><a href="/admin/grades">Panel grades</a> / <%= g.name %></div>
+  <div class="pagehead"><h1><%= g.title %></h1>
+    <% if (average !== null) { %><span class="pill good">Average <%= average.toFixed(2) %> from <%= submitted.length %> sheet<%= submitted.length === 1 ? '' : 's' %></span><% } %></div>
+  <p class="small muted">Defense: <%= g.defense_date ? L.fmtDate(g.defense_date) + ', ' + g.defense_time + ', room ' + g.room : 'not scheduled' %>.
+    <% if (missing.length) { %>Not started: <%= missing.map(p => p.name).join(', ') %>.<% } %></p>
+</div>
+<section class="card" id="release">
+  <header><h2>Defense result for the group</h2>
+    <% if (g.result_released_at) { %><span class="pill good">Released</span><% } else { %><span class="pill">Not released</span><% } %></header>
+  <% if (g.result_released_at) { %>
+    <p class="small">Released <%= L.fmtDateTime(g.result_released_at) %> as <b><%= g.result_outcome %></b><%= g.result_average !== null ? ', average ' + Number(g.result_average).toFixed(2) : '' %>. The group can see the average, the scores per criterion and the panel remarks (without panelist names). Sheets are locked.</p>
+  <% } else if (!ready) { %>
+    <p class="small muted"><%= assigned.length ? 'Waiting for ' + waiting.map(p => p.name).join(', ') + ' to submit.' : 'No panel members are assigned to this group.' %> You can release the result when every panel member has submitted.</p>
+  <% } else { %>
+    <p class="small muted">All <%= assigned.length %> panel member<%= assigned.length === 1 ? ' has' : 's have' %> submitted.
+      Outcomes chosen: <%= Object.keys(counts).map(k => k + ' ×' + counts[k]).join(', ') || 'none' %>.
+      <%= suggested ? 'The majority chose ' + suggested + '.' : 'There is no clear majority, so you decide.' %></p>
+  <% } %>
+  <% if (ready) { %>
+  <form class="stack" method="post" action="/admin/grades/<%= g.id %>/release" onsubmit="return confirm('<%= g.result_released_at ? 'Update the released result and notify the group?' : 'Release the result and notify the group?' %>')">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Final outcome <span class="hint">(your decision; the group sees this)</span></span>
+      <select name="final_outcome" required>
+        <% const pick = g.result_outcome || suggested; %>
+        <option value="">Choose…</option>
+        <% L.OUTCOMES.forEach(o => { %><option <%= o === pick ? 'selected' : '' %>><%= o %></option><% }) %>
+      </select></label>
+    <label class="field"><span>Note to the group <span class="hint"><%= g.result_released_at ? '(required: why the result changed)' : '(optional, for example what to revise and by when)' %></span></span>
+      <textarea name="note" maxlength="2000"></textarea></label>
+    <div class="row"><button class="btn primary" type="submit"><%= g.result_released_at ? 'Update released result' : 'Release result to the group' %></button></div>
+  </form>
+  <% } %>
+  <% if (history.length) { %>
+    <h3>History</h3>
+    <ul class="list">
+      <% history.forEach(h => { %><li><span><b><%= h.kind === 'update' ? 'Updated' : 'Released' %>: <%= h.outcome %></b><%= h.previous_outcome ? ' (was ' + h.previous_outcome + ')' : '' %><%= h.note ? ' · ' + h.note : '' %></span>
+        <span class="small muted"><%= h.by_name %> · <%= L.fmtDateTime(h.created_at) %></span></li><% }) %>
+    </ul>
+  <% } %>
+</section>
+
+<% if (!sheets.length) { %><section class="card"><p class="muted small">No panelist has started a sheet yet.</p></section><% } %>
+<% sheets.forEach(s => { %>
+<section class="card">
+  <header><h2><%= s.panel_name %></h2>
+    <span class="pill <%= s.status === 'Submitted' ? 'good' : s.status === 'Returned' ? 'warn' : '' %>"><%= s.status === 'Draft' ? 'Draft, not submitted' : s.status %></span></header>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Criterion</th><th class="num">Score</th><th class="num">Out of</th></tr></thead>
+    <tbody>
+    <% s.scores.forEach(r => { %><tr><td><%= r.title %></td><td class="num"><%= r.score === null ? '-' : Number(r.score) %></td><td class="num"><%= r.max_score %></td></tr><% }) %>
+    <tr><td><b>Total</b></td><td class="num"><b><%= Number(s.total) %></b></td><td class="num"><b><%= s.scores.reduce((a, r) => a + r.max_score, 0) %></b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="small"><b>Outcome:</b> <%= s.outcome || 'Not chosen' %><%= s.submitted_at ? ' · submitted ' + L.fmtDateTime(s.submitted_at) : '' %></p>
+  <% if (s.remarks) { %><p class="small"><b>Remarks:</b> <%= s.remarks %></p><% } %>
+  <% if (s.status === 'Returned' && s.return_note) { %><p class="small muted">Returned with the note: <%= s.return_note %></p><% } %>
+  <% if (s.status === 'Submitted' && !g.result_released_at) { %>
+  <form class="row" method="post" action="/admin/grades/<%= g.id %>/<%= s.id %>/return">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="text" name="note" maxlength="1000" placeholder="What should be corrected?" aria-label="Note to the panelist" required>
+    <button class="btn sm" type="submit">Return for correction</button>
+  </form>
+  <% } %>
+</section>
+<% }) %>
+<%- include('../partials/footer') %>

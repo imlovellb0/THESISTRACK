@@ -10,13 +10,24 @@
 
 <section class="card">
   <header><h2>Delete this workspace</h2></header>
-  <div class="flash warn">This cannot be undone. It permanently deletes every student, adviser and panel member account (including ID photos), all groups, chapters, uploaded files, comments, consultations, announcements and the activity log of this workspace, and your own coordinator account.</div>
-  <p class="small">Before you delete, <a href="/admin/reports.csv">download the report</a> and keep a copy of anything you still need. Other coordinators' workspaces are not affected.</p>
-  <form class="stack" method="post" action="/admin/workspace/delete">
-    <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <label class="field"><span>Type the workspace name to confirm: <b><%= workspace.name %></b></span><input type="text" name="confirm_name" autocomplete="off" required></label>
-    <label class="field"><span>Your password</span><input type="password" name="password" autocomplete="current-password" required></label>
-    <button class="btn" type="submit" onclick="return confirm('Delete this workspace and all of its data permanently?')">Delete workspace permanently</button>
-  </form>
+  <% if (request && request.status === 'Pending') { %>
+    <div class="flash warn">Your request to delete this workspace was sent on <%= L.fmtDate(request.created_at) %> and is waiting for the system administrator. Nothing is deleted yet.</div>
+    <p class="small"><b>Your reason:</b> <%= request.reason %></p>
+    <form method="post" action="/admin/workspace/delete-request/cancel"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn" type="submit">Cancel the request</button></form>
+  <% } else { %>
+    <% if (request && request.status === 'Rejected') { %>
+      <div class="flash error">Your last request (<%= L.fmtDate(request.created_at) %>) was rejected by the system administrator.<% if (request.decision_note) { %> Note: <%= request.decision_note %><% } %></div>
+    <% } %>
+    <p class="small">Only the system administrator can delete a workspace. You can ask for it here. If they approve, the workspace is suspended first, so nobody can sign in but nothing is erased, and it is permanently deleted only after a waiting period.</p>
+    <p class="small">Before you ask, <a href="/admin/reports.csv">download the report</a> and keep a copy of anything you still need.</p>
+    <form class="stack" method="post" action="/admin/workspace/delete-request">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Reason for the request</span><textarea name="reason" rows="3" maxlength="1000" required></textarea></label>
+      <label class="field"><span>Type the workspace name to confirm: <b><%= workspace.name %></b></span><input type="text" name="confirm_name" autocomplete="off" required></label>
+      <label class="field"><span>Your password</span><input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Request deletion</button>
+    </form>
+  <% } %>
 </section>
 <%- include('../partials/footer') %>

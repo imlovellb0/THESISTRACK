@@ -1,14 +1,14 @@
 <%- include('../partials/header') %>
 <div class="pagehead"><h1>System overview</h1><span class="muted small">Every workspace on this site</span></div>
 <div class="stats">
-  <div class="stat"><b><%= counts.workspaces %></b><span>Workspaces<% if (counts.suspended) { %> (<%= counts.suspended %> suspended)<% } %></span></div>
-  <div class="stat"><b><%= counts.coordinators %></b><span>Coordinators</span></div>
-  <div class="stat"><b><%= counts.advisers %></b><span>Advisers</span></div>
-  <div class="stat"><b><%= counts.students %></b><span>Students</span></div>
-  <div class="stat"><b><%= counts.panel %></b><span>Panel members</span></div>
-  <div class="stat"><b><%= counts.groups %></b><span>Thesis groups</span></div>
+  <a class="stat link" href="/system/workspaces"><b><%= counts.workspaces %></b><span>Workspaces<% if (counts.suspended) { %> (<%= counts.suspended %> suspended)<% } %></span></a>
+  <a class="stat link" href="/system/users?role=admin"><b><%= counts.coordinators %></b><span>Coordinators</span></a>
+  <a class="stat link" href="/system/users?role=adviser"><b><%= counts.advisers %></b><span>Advisers</span></a>
+  <a class="stat link" href="/system/users?role=student"><b><%= counts.students %></b><span>Students</span></a>
+  <a class="stat link" href="/system/users?role=panel"><b><%= counts.panel %></b><span>Panel members</span></a>
+  <a class="stat link" href="/system/groups"><b><%= counts.groups %></b><span>Thesis groups</span></a>
   <div class="stat"><b><%= counts.submissions %></b><span>Files submitted</span></div>
-  <div class="stat"><b><%= counts.inactive %></b><span>Inactive accounts</span></div>
+  <a class="stat link" href="/system/users?status=inactive"><b><%= counts.inactive %></b><span>Inactive accounts</span></a>
 </div>
 <% if (attention.length) { %>
 <div class="flash warn"><b>Needs attention:</b>
@@ -27,7 +27,7 @@
 </div>
 <aside class="col">
   <section class="card">
-    <header><h2>Health</h2><a class="small" href="/system/settings">Details</a></header>
+    <header><h2>Status</h2><a class="small" href="/system/settings">Details</a></header>
     <ul class="list">
       <% health.forEach(h => { %><li><span><span class="pill <%= h.ok ? 'good' : 'warn' %>"><%= h.ok ? 'OK' : 'Check' %></span> <%= h.name %></span></li><% }) %>
     </ul>

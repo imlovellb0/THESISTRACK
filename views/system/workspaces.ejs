@@ -12,7 +12,7 @@
         <td><b><%= w.name %></b><br><span class="small muted">Created <%= L.fmtDate(w.created_at) %></span></td>
         <td class="mono"><%= w.join_code %></td>
         <td class="num"><%= w.coordinators %></td><td class="num"><%= w.advisers %></td><td class="num"><%= w.students %></td><td class="num"><%= w.group_count %></td>
-        <td><span class="pill <%= w.active ? 'good' : 'bad' %>"><%= w.active ? 'Active' : 'Suspended' %></span></td>
+        <td><span class="pill <%= w.active ? 'good' : 'bad' %>"><%= w.active ? 'Active' : 'Suspended' %></span><% if (w.deletion && w.deletion.status === 'Pending') { %> <span class="pill warn">Deletion requested</span><% } else if (w.deletion && w.deletion.status === 'Approved') { %> <span class="pill bad">Deletion approved</span><% } %></td>
         <td><a class="btn sm" href="/system/workspaces/<%= w.id %>">Manage</a></td>
       </tr>
     <% }) %>

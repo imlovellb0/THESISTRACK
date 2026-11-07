@@ -11,24 +11,37 @@
 <% const nav = {
   student: [['/student', 'My thesis'], ['/messages', 'Messages'], ['/profile', 'Profile']],
   adviser: [['/adviser', 'My groups'], ['/messages', 'Messages']],
-  admin: [['/admin', 'Overview'], ['/admin/users', 'Users'], ['/admin/groups', 'Groups'], ['/admin/advisers', 'Advisers'], ['/admin/panel', 'Panel members'], ['/admin/announcements', 'Announcements'], ['/messages', 'Messages'], ['/admin/reports', 'Reports'], ['/admin/audit', 'Activity log'], ['/admin/workspace', 'Workspace']],
+  panel: [['/panel', 'My panels']],
+  admin: [['/admin', 'Overview'], ['/admin/users', 'Users'], ['/admin/groups', 'Groups'], ['/admin/contents', 'Contents'], ['/admin/advisers', 'Advisers'], ['/admin/panel', 'Panel members'], ['/admin/grades', 'Panel grades'],['/admin/announcements', 'Announcements'], ['/messages', 'Messages'], ['/admin/reports', 'Reports'], ['/admin/audit', 'Activity log'], ['/admin/workspace', 'Workspace']],
   superadmin: [['/system', 'Overview'], ['/system/workspaces', 'Workspaces'], ['/system/users', 'Users'], ['/system/groups', 'Groups'], ['/system/announcements', 'Announcements'], ['/system/audit', 'Activity log'], ['/system/settings', 'System']],
 }; %>
 <header class="topbar"><div class="topin">
   <a class="brand" href="/">ThesisTrack</a>
   <% if (user) { %>
-  <nav class="nav" aria-label="Main">
-    <% nav[user.role].forEach(([href, label]) => {
-         const on = (href === '/admin' || href === '/system') ? path === href
+  <%# The coordinator's menu is tucked under Overview: hover (or tab/tap) it to see the other pages. %>
+  <% const menu = user.role === 'admin'; const items = menu ? nav.admin.slice(1) : []; const links = menu ? [nav.admin[0]] : nav[user.role];
+     const isOn = (href) => (href === '/admin' || href === '/system') ? path === href
            : href === '/student' ? (path === '/student' || (path.startsWith('/student/') && !path.startsWith('/student/profile')))
            : (path === href || path.startsWith(href + '/')); %>
-      <a href="<%= href %>" <%- on ? 'aria-current="page"' : '' %>><%= label %><% if (href === '/messages' && unreadMsgs) { %> <span class="badge"><%= unreadMsgs %></span><% } %></a>
+  <nav class="nav<%= menu ? ' hasmenu' : '' %>" aria-label="Main">
+    <% links.forEach(([href, label]) => { const on = isOn(href) || (menu && items.some(([h]) => isOn(h))); %>
+      <% if (menu) { %><div class="navdrop"><% } %>
+      <a href="<%= href %>" <%- on ? 'aria-current="page"' : '' %> <%- menu ? 'aria-haspopup="true"' : '' %>><%= label %><% if (menu) { %> <span class="caret" aria-hidden="true">▾</span><% if (unreadMsgs) { %> <span class="badge"><%= unreadMsgs %></span><% } %><% } %><% if (href === '/messages' && unreadMsgs) { %> <span class="badge"><%= unreadMsgs %></span><% } %></a>
+      <% if (menu) { %>
+      <div class="dropmenu">
+        <% items.forEach(([h, l]) => { %><a href="<%= h %>" <%- isOn(h) ? 'aria-current="page"' : '' %>><%= l %><% if (h === '/messages' && unreadMsgs) { %> <span class="badge"><%= unreadMsgs %></span><% } %></a><% }) %>
+      </div></div>
+      <% } %>
     <% }) %>
   </nav>
   <div class="usernav">
-    <a class="bell" href="/notifications">Notifications <% if (unread) { %><span class="badge"><%= unread %></span><% } %></a>
+    <% const alerts = [unread && unread + ' unread notification' + (unread === 1 ? '' : 's'), unreadMsgs && unreadMsgs + ' unread message' + (unreadMsgs === 1 ? '' : 's')].filter(Boolean).join(', '); %>
+    <a class="bell" href="/notifications" title="<%= alerts || 'Notifications' %>" aria-label="Notifications<%= alerts ? ' (' + alerts + ')' : '' %>">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <% if (unread) { %><span class="badge bellbadge" id="bellcount" aria-hidden="true"><%= unread > 99 ? '99+' : unread %></span><% } else if (unreadMsgs) { %><span class="belldot" aria-hidden="true"></span><% } %>
+    </a>
     <% if (typeof workspace !== 'undefined' && workspace) { %><span class="muted small" title="Your workspace"><%= workspace.name %></span><% } %>
-    <a class="muted" href="/profile" title="My profile"><%- include('avatar', { u: user, size: 'xs' }) %> <%= user.name %> · <%= L.ROLE_LABEL[user.role] %></a>
+    <a class="muted" href="/profile" title="My profile"><%- include('avatar', { u: user, size: 'md' }) %> <%= user.name %> · <%= L.ROLE_LABEL[user.role] %></a>
     <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Sign out</button></form>
   </div>
   <% } %>

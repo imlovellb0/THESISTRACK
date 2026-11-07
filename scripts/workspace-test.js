@@ -121,9 +121,6 @@ const groupId = async (admin, name) =>
   check(p.body.includes('Welcome to BSCS 4B') && !p.body.includes('Defense slots are open'), 'a student sees only their own workspace\'s announcements');
   p = await juan.page('/student');
   check(p.body.includes('Defense slots are open') && !p.body.includes('Welcome to BSCS 4B'), 'the other workspace\'s student sees theirs');
-  const noticeId = (await db.get("SELECT id FROM announcements WHERE title = 'Defense slots are open'")).id;
-  await two.post(`/admin/announcements/${noticeId}/delete`, {}, '/admin/announcements');
-  check(!!(await db.get('SELECT 1 FROM announcements WHERE id = ?', [noticeId])), 'coordinator 2 cannot delete workspace 1\'s announcement');
   await two.post('/admin/announcements', { title: 'Only for workspace two', body: 'Hello.' }, '/admin/announcements');
   p = await juan.page('/notifications');
   check(!p.body.includes('Only for workspace two'), 'an announcement does not notify the other workspace\'s users');
@@ -146,7 +143,7 @@ const groupId = async (admin, name) =>
   const code1 = await joinCodeOf(one);
   const code2 = await joinCodeOf(two);
   check(!!code1 && !!code2 && code1 !== code2, 'every workspace has its own join code');
-  const stuff = (n) => ({ name: `Test Student ${n}`, student_no: `2030-000${n}`, email: `ws-test-${n}-${Date.now()}@student.edu.ph`, password: 'password123', confirm: 'password123' });
+  const stuff = (n) => ({ course: 'IT', year_level: '4', section: '4B', name: `Test Student ${n}`, student_no: `2030-000${n}`, email: `ws-test-${n}-${Date.now()}@student.edu.ph`, password: 'password123', confirm: 'password123' });
   let r = await registerStudent(new Client(), { ...stuff(1), join_code: 'WRONGCOD' });
   check(r.status === 400 && r.body.includes('join code is not valid'), 'a wrong join code is refused');
   r = await registerStudent(new Client(), stuff(2));
@@ -159,7 +156,7 @@ const groupId = async (admin, name) =>
 
   // a student cannot add a classmate from another workspace to their group
   const newStudent = await new Client().login(s3.email);
-  await newStudent.post('/student/group', { name: 'Team Isolation', title: 'Testing', emails: 'juan@student.edu.ph' }, '/student');
+  await newStudent.post('/student/group', { course: 'IT', year_level: '4', section: '4B', name: 'Team Isolation', title: 'Testing', emails: 'juan@student.edu.ph' }, '/student');
   const members = await db.all('SELECT u.email FROM group_members m JOIN users u ON u.id = m.student_id JOIN thesis_groups g ON g.id = m.group_id WHERE g.name = ?', ['Team Isolation']);
   check(members.length === 1 && members[0].email === s3.email, 'a group cannot take members from another workspace');
   check((await db.get("SELECT workspace_id FROM thesis_groups WHERE name = 'Team Isolation'")).workspace_id === (await db.get('SELECT workspace_id FROM users WHERE email = ?', [s3.email])).workspace_id, 'a new group belongs to its creator\'s workspace');
@@ -200,7 +197,7 @@ const groupId = async (admin, name) =>
   // ----- student home and profile picture -----
   const fsp = require('fs');
   const pathp = require('path');
-  const s5 = { name: 'Profile Tester', student_no: '2031-0005', email: `ws-test-5-${Date.now()}@student.edu.ph`, password: 'password123', confirm: 'password123' };
+  const s5 = { course: 'IT', year_level: '4', section: '4B', name: 'Profile Tester', student_no: '2031-0005', email: `ws-test-5-${Date.now()}@student.edu.ph`, password: 'password123', confirm: 'password123' };
   const c5 = new Client();
   r = await registerStudent(c5, { ...s5, join_code: code2 });
   check(r.loc === '/student', 'a new student lands on the student page');
@@ -273,7 +270,7 @@ const groupId = async (admin, name) =>
   const st = stuff(4);
   r = await registerStudent(new Client(), { ...st, join_code: code3 });
   const stClient = await new Client().login(st.email);
-  await stClient.post('/student/group', { name: 'Team Doomed', title: 'Will be deleted' }, '/student');
+  await stClient.post('/student/group', { course: 'IT', year_level: '4', section: '4B', name: 'Team Doomed', title: 'Will be deleted' }, '/student');
   const up = new FormData();
   up.append('_csrf', await stClient.token('/student/chapter/1'));
   up.append('file', new Blob(['%PDF-1.4 sample thesis chapter']), 'doomed.pdf');
@@ -291,16 +288,24 @@ const groupId = async (admin, name) =>
 
   p = await two.page('/admin/workspace');
   check(p.status === 200 && p.body.includes(code2), 'the workspace page shows the join code');
-  r = await two.post('/admin/workspace/delete', { confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
-  check(!!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])) && !!(await db.get("SELECT 1 FROM users WHERE email = 'admin2@school.edu.ph'")), 'a coordinator cannot delete a workspace by typing someone else\'s name');
-  r = await fresh.post('/admin/workspace/delete', { confirm_name: 'Wrong name', password: 'password123' }, '/admin/workspace');
-  check(!!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])), 'a wrong workspace name deletes nothing');
-  r = await fresh.post('/admin/workspace/delete', { confirm_name: 'Test Workspace', password: 'wrong-password' }, '/admin/workspace');
-  check(!!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])), 'a wrong password deletes nothing');
-  check((await juan.post('/admin/workspace/delete', { confirm_name: 'x', password: 'x' }, '/student')).status === 403, 'a student cannot reach the delete route');
+  const askRows = async () => (await db.get('SELECT COUNT(*) n FROM workspace_deletions WHERE workspace_id = ?', [w3])).n;
+  r = await two.post('/admin/workspace/delete-request', { reason: 'x', confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
+  check((await askRows()) === 0 && !!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])), 'a coordinator cannot ask to delete another workspace by typing someone else\'s name');
+  r = await fresh.post('/admin/workspace/delete-request', { reason: 'Closing', confirm_name: 'Wrong name', password: 'password123' }, '/admin/workspace');
+  check((await askRows()) === 0, 'a wrong workspace name sends no request');
+  r = await fresh.post('/admin/workspace/delete-request', { reason: 'Closing', confirm_name: 'Test Workspace', password: 'wrong-password' }, '/admin/workspace');
+  check((await askRows()) === 0, 'a wrong password sends no request');
+  r = await fresh.post('/admin/workspace/delete-request', { reason: '', confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
+  check((await askRows()) === 0, 'a request without a reason is refused');
+  check((await juan.post('/admin/workspace/delete-request', { reason: 'x', confirm_name: 'x', password: 'x' }, '/student')).status === 403, 'a student cannot reach the request route');
+  check((await fresh.post('/admin/workspace/delete', { confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace')).status === 404 && !!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])), 'a coordinator can no longer delete a workspace directly');
 
-  r = await fresh.post('/admin/workspace/delete', { confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
-  check(r.loc === '/login', 'the correct name and password delete the workspace');
+  r = await fresh.post('/admin/workspace/delete-request', { reason: 'Course finished', confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
+  check((await askRows()) === 1 && !!(await db.get('SELECT 1 FROM workspaces WHERE id = ?', [w3])), 'a correct request is saved as Pending and deletes nothing');
+  await fresh.post('/admin/workspace/delete-request', { reason: 'Again', confirm_name: 'Test Workspace', password: 'password123' }, '/admin/workspace');
+  check((await askRows()) === 1, 'a second request is refused while one is pending');
+  // The system administrator's delete (same routine) removes everything.
+  await require('../wsdelete').deleteWorkspace(w3);
   const left = await db.get('SELECT (SELECT COUNT(*) FROM users WHERE workspace_id = ?) u, (SELECT COUNT(*) FROM thesis_groups WHERE workspace_id = ?) g, (SELECT COUNT(*) FROM announcements WHERE workspace_id = ?) a, (SELECT COUNT(*) FROM activity_log WHERE workspace_id = ?) l, (SELECT COUNT(*) FROM adviser_invites WHERE workspace_id = ?) i, (SELECT COUNT(*) FROM workspaces WHERE id = ?) w', [w3, w3, w3, w3, w3, w3]);
   check(Object.values(left).every((v) => Number(v) === 0), 'every row of the workspace is gone');
   check(doomed.every((f) => !fsx.existsSync(pathx.join(db.UPLOAD_DIR, f))), 'its uploaded files and ID photo are removed from the disk');

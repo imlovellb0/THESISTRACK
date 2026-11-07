@@ -1,0 +1,2 @@
+<%# A visible way back. Pass href and label. With hist: true the button returns to the page the person came from (when it was on this site) and href is the fallback. %>
+<a class="backbtn" href="<%= href %>"<% if (locals.hist) { %> onclick="if (document.referrer.indexOf(location.origin) === 0 && history.length > 1) { history.back(); return false; }"<% } %>><span aria-hidden="true">&larr;</span> <%= label %></a>

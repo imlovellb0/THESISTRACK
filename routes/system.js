@@ -92,8 +92,10 @@ const workspaceRows = () => db.all(
 );
 const INVITE_DAYS = 7;
 const inviteRows = () => db.all('SELECT *, (expires_at < NOW()) AS expired FROM coordinator_invites ORDER BY id DESC LIMIT 50');
+const GRACE_DAYS = 30; // an approved deletion suspends the workspace this long before it can be erased
+const latestDeletion = (wid) => db.get('SELECT *, (delete_after IS NOT NULL AND delete_after > NOW()) AS in_grace FROM workspace_deletions WHERE workspace_id = ? ORDER BY id DESC LIMIT 1', [wid]);
 const workspacesPage = async (res, extra = {}) => res.render('system/workspaces', {
-  title: 'Workspaces', workspaces: await workspaceRows(), invites: await inviteRows(), ttlDays: INVITE_DAYS, mailReady: mailer.configured(), form: {}, inviteForm: {}, errorIn: '', ...extra,
+  title: 'Workspaces', workspaces: await Promise.all((await workspaceRows()).map(async (w) => ({ ...w, deletion: await latestDeletion(w.id) }))), invites: await inviteRows(), ttlDays: INVITE_DAYS, mailReady: mailer.configured(), form: {}, inviteForm: {}, errorIn: '', ...extra,
 });
 
 // ---------- coordinator invitations: a single-use code for one email address ----------
@@ -190,7 +192,7 @@ const workspacePage = async (req, res, extra = {}) => {
   if (!ws) return res.status(404).render('error', { title: 'Not found', message: 'That workspace does not exist.' });
   const n = async (sql) => (await db.get(sql, [ws.id])).n;
   res.render('system/workspace', {
-    title: ws.name, ws, form: {}, ...extra,
+    title: ws.name, ws, form: {}, request: await latestDeletion(ws.id), graceDays: GRACE_DAYS, ...extra,
     staff: await db.all("SELECT id, name, email, role, active FROM users WHERE workspace_id = ? AND role IN ('admin','adviser') ORDER BY role, name", [ws.id]),
     counts: {
       students: await n("SELECT COUNT(*) AS n FROM users WHERE workspace_id = ? AND role = 'student'"),
@@ -236,6 +238,7 @@ router.post('/workspaces/:id/toggle', async (req, res) => {
   if (!ws) req.flash('error', 'Workspace not found.');
   else {
     await db.run('UPDATE workspaces SET active = ? WHERE id = ?', [ws.active ? 0 : 1, ws.id]);
+    if (!ws.active) await db.run("UPDATE workspace_deletions SET status = 'Reversed', decided_at = NOW() WHERE workspace_id = ? AND status = 'Approved'", [ws.id]);
     await L.log(req.user.id, `${ws.active ? 'suspended' : 'reactivated'} the workspace ${ws.name}`);
     req.flash('ok', ws.active ? `${ws.name} is suspended. Nobody in it can sign in until you switch it back on.` : `${ws.name} is active again.`);
   }
@@ -259,10 +262,40 @@ router.post('/workspaces/:id/coordinators', async (req, res) => {
   res.redirect(`/system/workspaces/${ws.id}`);
 });
 
+router.post('/workspaces/:id/deletion/approve', async (req, res) => {
+  const ws = await workspaceById(req.params.id);
+  const r = ws && await latestDeletion(ws.id);
+  if (!r || r.status !== 'Pending') { req.flash('error', 'There is no pending deletion request for this workspace.'); return res.redirect(`/system/workspaces/${req.params.id}`); }
+  const note = clean(req.body.note, 1000);
+  await db.transaction(async () => {
+    await db.run('UPDATE workspaces SET active = 0 WHERE id = ?', [ws.id]);
+    await db.run(`UPDATE workspace_deletions SET status = 'Approved', decision_note = ?, decided_at = NOW(), delete_after = DATE_ADD(NOW(), INTERVAL ${GRACE_DAYS} DAY) WHERE id = ?`, [note || null, r.id]);
+  });
+  await L.log(req.user.id, `approved the deletion request of ${ws.name}; it is suspended for ${GRACE_DAYS} days`);
+  req.flash('ok', `Approved. ${ws.name} is suspended now. It can be permanently deleted after ${GRACE_DAYS} days, and you can reactivate it until then.`);
+  res.redirect(`/system/workspaces/${ws.id}`);
+});
+
+router.post('/workspaces/:id/deletion/reject', async (req, res) => {
+  const ws = await workspaceById(req.params.id);
+  const r = ws && await latestDeletion(ws.id);
+  if (!r || r.status !== 'Pending') { req.flash('error', 'There is no pending deletion request for this workspace.'); return res.redirect(`/system/workspaces/${req.params.id}`); }
+  const note = clean(req.body.note, 1000);
+  if (!note) { req.flash('error', 'Write a note so the coordinator knows why the request was rejected.'); return res.redirect(`/system/workspaces/${ws.id}`); }
+  await db.run("UPDATE workspace_deletions SET status = 'Rejected', decision_note = ?, decided_at = NOW() WHERE id = ?", [note, r.id]);
+  await L.log(req.user.id, `rejected the deletion request of ${ws.name}`);
+  if (r.requested_by) await L.notify(r.requested_by, `The system administrator rejected your request to delete the workspace.\
+Note: ${note}`, '/admin/workspace', 'system');
+  req.flash('ok', 'The request was rejected and the coordinator was told.');
+  res.redirect(`/system/workspaces/${ws.id}`);
+});
+
 router.post('/workspaces/:id/delete', async (req, res) => {
   const ws = await workspaceById(req.params.id);
   const back = (msg) => { req.flash('error', msg); return res.redirect(`/system/workspaces/${req.params.id}`); };
   if (!ws) return res.redirect('/system/workspaces');
+  const asked = await latestDeletion(ws.id);
+  if (asked && asked.status === 'Approved' && asked.in_grace) return back(`The grace period has not ended. It can be permanently deleted after ${L.fmtDate(asked.delete_after)}. Nothing was deleted.`);
   if (clean(req.body.confirm_name, 120) !== ws.name) return back('The name you typed does not match the workspace name. Nothing was deleted.');
   const me = await userById(req.user.id);
   if (!(await bcrypt.compare(String(req.body.password || ''), me.password_hash))) return back('Your password is not correct. Nothing was deleted.');
@@ -360,12 +393,14 @@ router.post('/users/:id', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 190);
   const studentNo = u.role === 'student' ? clean(req.body.student_no, 30) : null;
   const fail = (msg) => userPage(req, res.status(400), { error: msg });
+  const cls = u.role === 'student' ? L.readClass(req.body, true) : { value: {} };
+  if (cls.error) return fail(cls.error);
   if (!name) return fail('Enter a name.');
   if (!EMAIL.test(email)) return fail('Enter a valid email address.');
   if (await db.get('SELECT 1 FROM users WHERE email = ? AND id != ?', [email, u.id])) return fail('Another account already uses that email.');
   if (studentNo && !STUDENT_NO.test(studentNo)) return fail('The student ID number may use letters, numbers and dashes only.');
   if (studentNo && (await db.get('SELECT 1 FROM users WHERE student_no = ? AND id != ?', [studentNo, u.id]))) return fail('That student ID number is already registered.');
-  await db.run('UPDATE users SET name = ?, email = ?, student_no = ? WHERE id = ?', [name, email, u.role === 'student' ? studentNo || null : u.student_no, u.id]);
+  await db.run('UPDATE users SET name = ?, email = ?, student_no = ?, course = ?, year_level = ?, section = ? WHERE id = ?', [name, email, u.role === 'student' ? studentNo || null : u.student_no, ...(u.role === 'student' ? [cls.value.course, cls.value.year_level, cls.value.section] : [u.course, u.year_level, u.section]), u.id]);
   await L.log(req.user.id, `edited the account of ${u.name}`);
   req.flash('ok', 'The account was saved.');
   res.redirect(`/system/users/${u.id}`);
@@ -387,7 +422,6 @@ router.post('/users/:id/toggle', guarded(async (u, req) => {
 }));
 
 router.post('/users/:id/reset-password', guarded(async (u, req) => {
-  if (u.role === 'panel') return req.flash('error', 'Panel members do not sign in, so they have no password.');
   const temp = tempPassword();
   await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(temp, 10), u.id]);
   await db.run('DELETE FROM sessions WHERE data LIKE ? OR data LIKE ?', [`%"userId":${u.id},%`, `%"userId":${u.id}}%`]);
@@ -445,22 +479,15 @@ router.post('/announcements', async (req, res) => {
   let notified = 0;
   await db.transaction(async () => {
     for (const w of spaces) {
-      await db.run('INSERT INTO announcements (title, body, posted_by, workspace_id, broadcast_id) VALUES (?, ?, ?, ?, ?)', [title, body, req.user.id, w.id, bid]);
+      const info = await db.run('INSERT INTO announcements (title, body, posted_by, workspace_id, broadcast_id) VALUES (?, ?, ?, ?, ?)', [title, body, req.user.id, w.id, bid]);
       for (const u of await db.all(`SELECT id FROM users WHERE active = 1 AND workspace_id = ? AND role IN (${(roles.length ? roles : ['student', 'adviser', 'admin']).map(() => '?').join(',')})`, [w.id, ...(roles.length ? roles : ['student', 'adviser', 'admin'])])) {
-        await L.notify(u.id, `New announcement: ${title}`, '/', 'system');
+        await L.notify(u.id, `New announcement: ${title}`, `/announcements/${info.lastInsertRowid}`, 'system');
         notified++;
       }
     }
   });
   await L.log(req.user.id, `sent the announcement "${title}" to ${target === 'all' ? 'every workspace' : spaces[0].name}`);
   req.flash('ok', `Announcement sent to ${spaces.length} workspace${spaces.length === 1 ? '' : 's'}. ${notified} people were notified.`);
-  res.redirect('/system/announcements');
-});
-
-router.post('/announcements/:bid/delete', async (req, res) => {
-  const r = await db.run('DELETE FROM announcements WHERE broadcast_id = ?', [String(req.params.bid).slice(0, 16)]);
-  if (r.changes) await L.log(req.user.id, 'removed a system announcement');
-  req.flash('ok', 'The announcement was removed from every workspace.');
   res.redirect('/system/announcements');
 });
 
@@ -520,7 +547,8 @@ router.get('/settings', async (req, res) => {
       sessions: (await db.get('SELECT COUNT(*) AS n FROM sessions WHERE expires < ?', [Date.now()])).n,
       resets: (await db.get('SELECT COUNT(*) AS n FROM password_resets WHERE expires_at < NOW() OR used_at IS NOT NULL')).n,
       invites: (await db.get("SELECT COUNT(*) AS n FROM adviser_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())")).n +
-        (await db.get("SELECT COUNT(*) AS n FROM coordinator_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())")).n,
+        (await db.get("SELECT COUNT(*) AS n FROM coordinator_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())")).n +
+        (await db.get("SELECT COUNT(*) AS n FROM panel_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())")).n,
       notifications: (await db.get('SELECT COUNT(*) AS n FROM notifications WHERE is_read = 1 AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)')).n,
     },
   });
@@ -540,7 +568,8 @@ const TASKS = {
   invites: ['cancelled or expired invitations', async () => {
     const a = await db.run("DELETE FROM adviser_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())");
     const c = await db.run("DELETE FROM coordinator_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())");
-    return { changes: a.changes + c.changes };
+    const p = await db.run("DELETE FROM panel_invites WHERE status = 'Cancelled' OR (status = 'Invited' AND expires_at < NOW())");
+    return { changes: a.changes + c.changes + p.changes };
   }],
   notifications: ['read notifications older than 90 days', () => db.run('DELETE FROM notifications WHERE is_read = 1 AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)')],
 };

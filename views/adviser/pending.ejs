@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<%- include('../partials/back', { href: '/adviser', label: 'Back to my groups' }) %>
+<div class="pagehead"><h1>Pending reviews</h1><span class="muted small"><%= items.length %> chapter<%= items.length === 1 ? '' : 's' %> waiting for your decision, oldest first</span></div>
+<section class="card">
+  <div class="tablewrap"><table class="cards">
+    <thead><tr><th>Group</th><th>Chapter</th><th>Submitted file</th><th>Uploaded</th><th>Deadline</th><th></th></tr></thead>
+    <tbody>
+    <% items.forEach(i => { %>
+      <tr>
+        <td><a href="/adviser/group/<%= i.group_id %>"><b><%= i.group_name %></b></a><br><span class="small muted"><%= i.group_title %></span></td>
+        <td data-label="Chapter"><%= i.number %>. <%= chNames[i.number - 1] %></td>
+        <td class="mono" data-label="File"><% if (i.file_id) { %><a href="/files/<%= i.file_id %>"><%= i.original_name %></a> <span class="muted">v<%= i.version_no %></span><% } else { %>None<% } %></td>
+        <td data-label="Uploaded"><%= i.uploaded_at ? L.fmtDateTime(i.uploaded_at) : '' %></td>
+        <td data-label="Deadline"><%= i.deadline ? L.fmtDate(i.deadline) : 'None' %></td>
+        <td><a class="btn sm primary" href="/adviser/group/<%= i.group_id %>/chapter/<%= i.number %>">Review</a></td>
+      </tr>
+    <% }) %>
+    <% if (!items.length) { %><tr><td colspan="6" class="muted">Nothing is waiting for review.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</section>
+<%- include('../partials/footer') %>
