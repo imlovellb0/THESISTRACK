@@ -1,5 +1,5 @@
 // mailer.js - Resend API (HTTPS, hindi SMTP - hindi blocked ni Render)
-const FROM = process.env.SMTP_USER || 'onboarding@resend.dev';
+const FROM = 'onboarding@resend.dev';
 
 async function sendMail({ to, subject, html, text }) {
   console.log('[mailer] send called to:', to);
@@ -60,11 +60,17 @@ async function sendInvite(to, code, inviteLink) {
   return sendMail({ to, subject, html });
 }
 
+function configured() {
+  return !!process.env.RESEND_API_KEY;
+}
+
 module.exports = {
   sendMail,
   send,
   sendInvite,
   sendInvitation: sendInvite,
+  configured,
+  isConfigured: configured,
   // stub lang para hindi mag-error yung lumang code na naghahanap nito
   getTransporter: () => ({ sendMail }),
 };
