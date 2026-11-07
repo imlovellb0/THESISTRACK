@@ -59,4 +59,14 @@ async function send(to, subject, text) {
   return { sent: false };
 }
 
-module.exports = { send, configured };
+async function sendInvite(name, email, otp) {
+  const subject = 'Your ThesisTrack Invite Code';
+  const text = `Hi ${name},\n\nYour ThesisTrack invite code is: ${otp}\n\nEnter this code to set up your adviser account.\n\n- ThesisTrack`;
+  return send(email, subject, text);
+}
+
+async function sendOTP(email, otp) {
+  return send(email, 'Your ThesisTrack OTP', `Your OTP code is: ${otp}`);
+}
+
+module.exports = { send, sendInvite, sendOTP, configured };
