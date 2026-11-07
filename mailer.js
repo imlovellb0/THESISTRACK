@@ -9,14 +9,19 @@ function configured() {
 }
 
 function getTransporter() {
+  const port = Number(process.env.SMTP_PORT || 465);
+  console.log('[mailer] connecting to', process.env.SMTP_HOST, 'port', port, 'secure', port === 465);
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
+    port: port,
+    secure: port === 465, 
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 10000, // 10 sec lang, hindi na magha-hang forever
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 }
 
