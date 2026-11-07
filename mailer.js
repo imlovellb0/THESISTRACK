@@ -1,6 +1,7 @@
 // mailer.js - Brevo via HTTPS (no SMTP, works on Render free, any recipient)
 const FROM_EMAIL = 'lovelybillones417@gmail.com';
 const FROM_NAME = 'ThesisTrack';
+const APP_URL = process.env.APP_URL || 'https://thesistrack-ikda.onrender.com';
 
 function configured() {
   return !!process.env.BREVO_API_KEY;
@@ -59,9 +60,12 @@ async function sendMail(toOrOptions, subjectArg, textArg) {
   return { messageId: data.messageId, ...data };
 }
 
-async function sendInvite(to, code, link) {
+// The link argument is accepted for backward compatibility but ignored,
+// so every invitation always points to the ThesisTrack login page.
+async function sendInvite(to, code) {
+  const loginLink = `${APP_URL}/login`;
   const subject = 'Your ThesisTrack coordinator invitation';
-  const text = `Hello,\n\nYour invitation code: ${code}\n\nTo finish, open: ${link}\n\nIf you did not expect this, ignore this email.\n`;
+  const text = `Hello,\n\nYour invitation code: ${code}\n\nTo finish, sign in here: ${loginLink}\n\nIf you did not expect this, ignore this email.\n`;
   return sendMail(to, subject, text);
 }
 
