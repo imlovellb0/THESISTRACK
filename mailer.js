@@ -15,11 +15,11 @@ function getTransporter() {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: port,
     secure: port === 465, 
-    auth: {
+        auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    connectionTimeout: 10000, // 10 sec lang, hindi na magha-hang forever
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
   });
