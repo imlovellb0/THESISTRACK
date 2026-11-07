@@ -1,13 +1,12 @@
-// mailer.js - Resend via HTTPS (no SMTP, works on Render free)
-const FROM = 'onboarding@resend.dev';
+// mailer.js - Brevo via HTTPS (no SMTP, works on Render free, any recipient)
+const FROM_EMAIL = 'lovelybillones417@gmail.com';
+const FROM_NAME = 'ThesisTrack';
 
 function configured() {
-  return !!process.env.RESEND_API_KEY;
+  return !!process.env.BREVO_API_KEY;
 }
 
 async function sendMail(toOrOptions, subjectArg, textArg) {
-  // Tanggapin pareho: sendMail("email", "subject", "text")
-  // at sendMail({ to, subject, text })
   let to, subject, text, html;
 
   if (toOrOptions && typeof toOrOptions === 'object') {
@@ -21,44 +20,43 @@ async function sendMail(toOrOptions, subjectArg, textArg) {
     text = textArg;
   }
 
-  // Kung array yung to, kunin yung una
   if (Array.isArray(to)) to = to[0];
-  // Kung object pa rin yung to tulad ng { address: ... }, kunin yung address
   if (to && typeof to === 'object') to = to.address || to.email || to.value;
 
   console.log('[mailer] send called to:', to);
-  console.log('[mailer] configured check:', { hasKey: !!process.env.RESEND_API_KEY });
+  console.log('[mailer] configured check:', { hasKey: !!process.env.BREVO_API_KEY });
 
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY is missing');
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error('BREVO_API_KEY is missing');
   }
 
-  console.log('[mailer] connecting to api.resend.com via HTTPS port 443');
+  console.log('[mailer] connecting to api.brevo.com via HTTPS port 443');
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'api-key': process.env.BREVO_API_KEY,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     body: JSON.stringify({
-      from: FROM,
-      to: to,
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: to }],
       subject: subject,
-      text: text,
-      html: html || (text ? text.replace(/\n/g, '<br>') : undefined),
+      textContent: text,
+      htmlContent: html || (text ? text.replace(/\n/g, '<br>') : undefined),
     }),
   });
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    console.log('[mailer] ❌ SMTP FAILED:', data.message || JSON.stringify(data));
-    throw new Error(data.message || 'Resend failed');
+    console.log('[mailer] ❌ BREVO FAILED:', data.message || JSON.stringify(data));
+    throw new Error(data.message || 'Brevo failed');
   }
 
-  console.log('[mailer] ✅ REAL EMAIL SENT via Resend, id:', data.id);
-  return { messageId: data.id, ...data };
+  console.log('[mailer] ✅ REAL EMAIL SENT via Brevo, id:', data.messageId);
+  return { messageId: data.messageId, ...data };
 }
 
 async function sendInvite(to, code, link) {
