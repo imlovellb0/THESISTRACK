@@ -1,17 +1,35 @@
-// mailer.js - Resend API (HTTPS, hindi SMTP - hindi blocked ni Render)
+// mailer.js - Resend via HTTPS (no SMTP, works on Render free)
 const FROM = 'onboarding@resend.dev';
 
-async function sendMail({ to, subject, html, text }) {
+function configured() {
+  return !!process.env.RESEND_API_KEY;
+}
+
+async function sendMail(toOrOptions, subjectArg, textArg) {
+  // Tanggapin pareho: sendMail("email", "subject", "text")
+  // at sendMail({ to, subject, text })
+  let to, subject, text, html;
+
+  if (toOrOptions && typeof toOrOptions === 'object') {
+    to = toOrOptions.to;
+    subject = toOrOptions.subject;
+    text = toOrOptions.text;
+    html = toOrOptions.html;
+  } else {
+    to = toOrOptions;
+    subject = subjectArg;
+    text = textArg;
+  }
+
+  // Kung array yung to, kunin yung una
+  if (Array.isArray(to)) to = to[0];
+  // Kung object pa rin yung to tulad ng { address: ... }, kunin yung address
+  if (to && typeof to === 'object') to = to.address || to.email || to.value;
+
   console.log('[mailer] send called to:', to);
-  console.log('[mailer] configured check:', {
-    host: true,
-    user: true,
-    pass: true,
-    userValue: FROM ? FROM.slice(0, 3) + '***' : 'missing',
-  });
+  console.log('[mailer] configured check:', { hasKey: !!process.env.RESEND_API_KEY });
 
   if (!process.env.RESEND_API_KEY) {
-    console.log('[mailer] ❌ SMTP FAILED: RESEND_API_KEY is missing');
     throw new Error('RESEND_API_KEY is missing');
   }
 
@@ -20,57 +38,41 @@ async function sendMail({ to, subject, html, text }) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `ThesisTrack <${FROM}>`,
-      to: [to],
+      from: FROM,
+      to: to,
       subject: subject,
-      html: html,
-      text: text || html?.replace(/<[^>]+>/g, ''),
+      text: text,
+      html: html || (text ? text.replace(/\n/g, '<br>') : undefined),
     }),
   });
 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    console.log('[mailer] ❌ SMTP FAILED:', data.message || res.statusText);
-    throw new Error(data.message || `Resend failed: ${res.status}`);
+    console.log('[mailer] ❌ SMTP FAILED:', data.message || JSON.stringify(data));
+    throw new Error(data.message || 'Resend failed');
   }
 
-  console.log('[mailer] ✅ REAL EMAIL SENT via Resend:', data.id);
-  return data;
+  console.log('[mailer] ✅ REAL EMAIL SENT via Resend, id:', data.id);
+  return { messageId: data.id, ...data };
 }
 
-// Para hindi masira yung ibang files na tumatawag sa lumang function
-async function send(to, subject, html) {
-  return sendMail({ to, subject, html });
-}
-
-async function sendInvite(to, code, inviteLink) {
-  const subject = 'Your ThesisTrack Invitation Code';
-  const html = `
-    <h2>You are invited to ThesisTrack</h2>
-    <p>Your invitation code is:</p>
-    <h1 style="letter-spacing: 4px;">${code}</h1>
-    ${inviteLink ? `<p><a href="${inviteLink}">Click here to accept invitation</a></p>` : ''}
-    <p>If you did not expect this, please ignore this email.</p>
-  `;
-  return sendMail({ to, subject, html });
-}
-
-function configured() {
-  return !!process.env.RESEND_API_KEY;
+async function sendInvite(to, code, link) {
+  const subject = 'Your ThesisTrack coordinator invitation';
+  const text = `Hello,\n\nYour invitation code: ${code}\n\nTo finish, open: ${link}\n\nIf you did not expect this, ignore this email.\n`;
+  return sendMail(to, subject, text);
 }
 
 module.exports = {
   sendMail,
-  send,
+  send: sendMail,
   sendInvite,
   sendInvitation: sendInvite,
   configured,
   isConfigured: configured,
-  // stub lang para hindi mag-error yung lumang code na naghahanap nito
   getTransporter: () => ({ sendMail }),
 };
