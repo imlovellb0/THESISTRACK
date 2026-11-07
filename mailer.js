@@ -1,68 +1,95 @@
-// Sends email. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (and optionally MAIL_FROM) to send real mail.
-// Without those settings, messages are written to outbox/mail.log instead of being sent.
 const nodemailer = require('nodemailer');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
-const OUTBOX = path.join(__dirname, 'outbox');
-
-const getEnv = (key) => {
-  const v = process.env[key];
-  if (!v) return '';
-  return v.trim().replace(/\s+/g, ''); // tanggalin spaces sa App Password
-};
-
-const configured = () => {
-  const host = getEnv('SMTP_HOST');
-  const user = getEnv('SMTP_USER');
-  const pass = getEnv('SMTP_PASS');
-  console.log('[mailer] configured check:', {
-    host: !!host,
-    user: !!user,
-    pass: !!pass,
-    userValue: user ? user.slice(0, 3) + '***' : '(empty)'
-  });
-  return !!(host && user && pass);
-};
-
-let transport;
-
-async function send(to, subject, text) {
-  if (configured()) {
-    const port = Number(process.env.SMTP_PORT || 465);
-    if (!transport) {
-      transport = nodemailer.createTransport({
-        host: getEnv('SMTP_HOST'),
-        port,
-        secure: port === 465,
-        auth: { user: getEnv('SMTP_USER'), pass: getEnv('SMTP_PASS') },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 12000,
-      });
-    }
-    try {
-      const from = (process.env.MAIL_FROM || '').trim() || getEnv('SMTP_USER');
-      await transport.sendMail({ from, to, subject, text });
-      console.log(`[mailer] ✅ REAL EMAIL SENT to ${to}`);
-      return { sent: true };
-    } catch (err) {
-      console.log(`[mailer] ❌ SMTP FAILED: ${err.message}`);
-      // Huwag mag-fallback sa file pag nag-fail sa Render, para makita mo yung error
-      throw err;
-    }
-  }
-
-  fs.mkdirSync(OUTBOX, { recursive: true });
-  fs.appendFileSync(path.join(OUTBOX, 'mail.log'), `--- ${new Date().toISOString()}\nTo: ${to}\nSubject: ${subject}\n\n${text}\n\n`);
-  console.log(`Email is not set up. The message to ${to} was saved in outbox/mail.log.`);
-  return { sent: false };
+function configured() {
+  const ok = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  console.log('[mailer] configured check:', { host: !!process.env.SMTP_HOST, user: !!process.env.SMTP_USER, pass: !!process.env.SMTP_PASS, userValue: process.env.SMTP_USER ? process.env.SMTP_USER.slice(0,3) + '***' : null });
+  return ok;
 }
 
-async function sendInvite(name, email, otp) {
-  const subject = 'Your ThesisTrack Invite Code';
-  const text = `Hi ${name},\n\nYour ThesisTrack invite code is: ${otp}\n\nEnter this code to set up your adviser account.\n\n- ThesisTrack`;
-  return send(email, subject, text);
+function getTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+// Tumatanggap ng DALAWANG klase ng tawag:
+// 1. send({ to, subject, text }) - ito yung ginagamit ng admin.js mo
+// 2. send('email@gmail.com', 'subject', 'text') - pang-backup
+async function send(toOrObj, subjectOrText, textArg) {
+  let to, subject, text;
+
+  if (typeof toOrObj === 'object' && toOrObj !== null) {
+    to = toOrObj.to || toOrObj.email;
+    subject = toOrObj.subject;
+    text = toOrObj.text || toOrObj.html;
+  } else {
+    to = toOrObj;
+    subject = subjectOrText;
+    text = textArg;
+  }
+
+  console.log('[mailer] send called to:', to);
+
+  if (!configured()) {
+    // Fallback: save sa mail.log para hindi mawala yung code
+    try {
+      const dir = path.join(__dirname, 'outbox');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(path.join(dir, 'mail.log'), `\n[${new Date().toISOString()}] TO: ${to} | ${subject} | ${text}\n`);
+    } catch (e) {}
+    console.log('[mailer] NOT CONFIGURED - saved to outbox/mail.log');
+    return { sent: false, reason: 'not-configured' };
+  }
+
+  try {
+    const info = await getTransporter().sendMail({
+      from: process.env.MAIL_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      text,
+    });
+    console.log('[mailer] ✅ REAL EMAIL SENT to', to, info.messageId);
+    return { sent: true, messageId: info.messageId };
+  } catch (err) {
+    console.log('[mailer] ❌ SMTP FAILED:', err.message);
+    return { sent: false, error: err.message };
+  }
+}
+
+// Para sa kahit anong tawag: sendInvite({name,email}, otp) O sendInvite(name,email,otp) O sendInvite(invite, otp)
+async function sendInvite(a, b, c) {
+  if (typeof a === 'object' && a !== null && b !== undefined && typeof b !== 'string') {
+    // sendInvite({name,email}, otp) - galing sa admin.js
+    const invite = a;
+    const otp = b;
+    return send({
+      to: invite.email,
+      subject: 'Your ThesisTrack adviser invitation',
+      text: `Hello ${invite.name},\n\nYour one-time code: ${otp}\n\nEnter this code to set up your adviser account.\n\n- ThesisTrack`
+    });
+  }
+  if (typeof a === 'object' && a !== null) {
+    // sendInvite(invite, otp) - resend
+    return send({
+      to: a.email,
+      subject: 'Your ThesisTrack adviser invitation',
+      text: `Hello ${a.name},\n\nYour one-time code: ${b}\n\n- ThesisTrack`
+    });
+  }
+  // sendInvite(name, email, otp)
+  return send({
+    to: b,
+    subject: 'Your ThesisTrack adviser invitation',
+    text: `Hello ${a},\n\nYour one-time code: ${c}\n\n- ThesisTrack`
+  });
 }
 
 async function sendOTP(email, otp) {
