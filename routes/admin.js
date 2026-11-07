@@ -64,6 +64,19 @@ router.post('/users', async (req, res) => {
   if (studentNo && (await db.get('SELECT 1 FROM users WHERE student_no = ?', [studentNo]))) return fail('That student ID number is already registered.');
   await db.run('INSERT INTO users (name, email, password_hash, role, student_no, course, year_level, section, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [name, email, await bcrypt.hash(role === 'panel' ? crypto.randomBytes(24).toString('hex') : password, 10), role, studentNo || null, cls.value.course || null, cls.value.year_level || null, cls.value.section || null, req.user.workspace_id]);
   await L.log(req.user.id, `added ${name} as ${L.ROLE_LABEL[role].toLowerCase()}`);
+    // SEND EMAIL WITH LOGIN + STARTING PASSWORD
+  try {
+    console.log('[ADD USER] Sending email to:', email);
+    await mailer.sendMail({
+      to: email,
+      subject: 'Your ThesisTrack Account',
+          text: `Hello ${name},\n\nYour ThesisTrack account is ready.\n\nLogin here: https://thesistrack-ikda.onrender.com/login\nEmail: ${email}\nStarting Password: ${password}\nRole: ${role}\n\nPlease change your password after first login.`,
+          html: `<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;"><h2>ThesisTrack</h2><p>Hello ${name},</p><p>Your account is ready.</p><p><b>Login:</b> <a href="https://thesistrack-ikda.onrender.com/login">https://thesistrack-ikda.onrender.com/login</a><br><b>Email:</b> ${email}<br><b>Starting Password:</b> ${password}<br><b>Role:</b> ${role}</p><p>Please change your password after first login.</p></div>`,
+    });
+    console.log('[ADD USER] Email sent to:', email);
+  } catch (e) {
+    console.log('[ADD USER] Email failed:', e.message);
+  }
   req.flash('ok', role === 'panel' ? `${name} was added as a panel member.` : `${name} was added. Share the starting password with them privately.`);
   res.redirect('/admin/users');
 });
